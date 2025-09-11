@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: vetsecure-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: vetsecure
+    ports:
+      - "3306:3306"            # change left side to 3307 if 3306 is busy
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - dbdata:/var/lib/mysql
+volumes:
+  dbdata:
