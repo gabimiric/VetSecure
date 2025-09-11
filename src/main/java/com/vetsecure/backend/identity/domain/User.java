@@ -18,6 +18,7 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    private String name;
     private boolean emailVerified;
     private boolean mfaEnabled;
 
@@ -33,4 +34,6 @@ public class User {
     public void setEmailVerified(boolean v) { this.emailVerified = v; }
     public boolean isMfaEnabled() { return mfaEnabled; }
     public void setMfaEnabled(boolean m) { this.mfaEnabled = m; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 }
