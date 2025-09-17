@@ -1,6 +1,11 @@
 package com.vetsecure.backend.repository;
 
 import com.vetsecure.backend.model.ClinicRequest;
+import com.vetsecure.backend.model.ClinicRequest.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ClinicRequestRepository extends JpaRepository<ClinicRequest, Long> { }
+import java.util.List;
+
+public interface ClinicRequestRepository extends JpaRepository<ClinicRequest, Long> {
+    List<ClinicRequest> findByStatusOrderByIdDesc(Status status);
+}

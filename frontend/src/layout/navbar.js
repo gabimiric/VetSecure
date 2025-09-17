@@ -32,7 +32,15 @@ export default function Navbar() {
                     justifyContent: "space-between",
                 }}
             >
-                <Link to="/" style={{ fontWeight: 800, fontSize: 18, color: "#111827", textDecoration: "none" }}>
+                <Link
+                    to="/"
+                    style={{
+                        fontWeight: 800,
+                        fontSize: 18,
+                        color: "#111827",
+                        textDecoration: "none",
+                    }}
+                >
                     VetSecure
                 </Link>
 
@@ -45,6 +53,9 @@ export default function Navbar() {
                     </NavLink>
                     <NavLink to="/register/clinic" style={linkStyle}>
                         Register Clinic
+                    </NavLink>
+                    <NavLink to="/admin/requests" style={linkStyle}>
+                        See Requests
                     </NavLink>
                 </div>
             </nav>
