@@ -1,0 +1,8 @@
+.card { max-width: 720px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+h2 { margin-bottom: 16px; }
+label { display:block; font-weight:600; margin:14px 0 6px; }
+input { width:100%; padding:12px 14px; border:1px solid #e5e7eb; border-radius:12px; outline:none; }
+input:focus { border-color:#6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+button { margin-top:18px; width:100%; padding:12px; border:none; border-radius:14px; color:#fff; background: linear-gradient(135deg,#4f46e5,#3b82f6); cursor:pointer; }
+.ok { color:#15803d; margin-top:10px; }
+.err { color:#b91c1c; margin-top:10px; }

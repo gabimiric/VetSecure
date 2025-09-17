@@ -1,7 +1,13 @@
 import React, { useState } from "react";
 
-export default function OwnerForm() {
-    const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+export default function ClinicRequestForm() {
+    const [form, setForm] = useState({
+        clinicName: "",
+        adminEmail: "",
+        address: "",
+        city: "",
+        phone: "",
+    });
     const [status, setStatus] = useState(null);
 
     const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -10,14 +16,14 @@ export default function OwnerForm() {
         e.preventDefault();
         setStatus("saving");
         try {
-            const res = await fetch("/api/owners", {
+            const res = await fetch("/api/clinic-requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(form),
             });
             if (!res.ok) throw new Error(await res.text());
             setStatus("saved");
-            setForm({ name: "", email: "", phone: "", address: "" });
+            setForm({ clinicName: "", adminEmail: "", address: "", city: "", phone: "" });
         } catch (err) {
             console.error(err);
             setStatus("error");
@@ -26,30 +32,30 @@ export default function OwnerForm() {
 
     return (
         <div style={{ maxWidth: 640, margin: "32px auto" }}>
-            <h2 style={{ fontSize: 24, marginBottom: 16 }}>Register Pet Owner</h2>
+            <h2 style={{ fontSize: 24, marginBottom: 16 }}>Clinic Registration Request</h2>
             <form onSubmit={submit} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
                 <label style={{ display: "block", marginBottom: 8 }}>
-                    Full name
+                    Clinic name
                     <input
-                        name="name"
-                        value={form.name}
+                        name="clinicName"
+                        value={form.clinicName}
                         onChange={onChange}
                         required
                         style={inputStyle}
-                        placeholder="Jane Doe"
+                        placeholder="Happy Paws Vet"
                     />
                 </label>
 
                 <label style={{ display: "block", marginBottom: 8 }}>
-                    Email
+                    Admin email
                     <input
                         type="email"
-                        name="email"
-                        value={form.email}
+                        name="adminEmail"
+                        value={form.adminEmail}
                         onChange={onChange}
                         required
                         style={inputStyle}
-                        placeholder="jane@example.com"
+                        placeholder="admin@clinic.com"
                     />
                 </label>
 
@@ -60,7 +66,18 @@ export default function OwnerForm() {
                         value={form.phone}
                         onChange={onChange}
                         style={inputStyle}
-                        placeholder="+1 555 000 000"
+                        placeholder="+373 ..."
+                    />
+                </label>
+
+                <label style={{ display: "block", marginBottom: 8 }}>
+                    City
+                    <input
+                        name="city"
+                        value={form.city}
+                        onChange={onChange}
+                        style={inputStyle}
+                        placeholder="Chisinau"
                     />
                 </label>
 
@@ -71,7 +88,7 @@ export default function OwnerForm() {
                         value={form.address}
                         onChange={onChange}
                         style={inputStyle}
-                        placeholder="City, Street 1"
+                        placeholder="Street & Number"
                     />
                 </label>
 
@@ -89,11 +106,11 @@ export default function OwnerForm() {
                         width: "100%",
                     }}
                 >
-                    {status === "saving" ? "Saving..." : "Save Owner"}
+                    {status === "saving" ? "Sending..." : "Send Request"}
                 </button>
 
-                {status === "saved" && <p style={{ color: "green", marginTop: 12 }}>Saved!</p>}
-                {status === "error" && <p style={{ color: "crimson", marginTop: 12 }}>Failed to save.</p>}
+                {status === "saved" && <p style={{ color: "green", marginTop: 12 }}>Request submitted!</p>}
+                {status === "error" && <p style={{ color: "crimson", marginTop: 12 }}>Failed to submit.</p>}
             </form>
         </div>
     );
