@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "name": "Jack",
+    "species": "Dog",
+    "breed": "Golden Retriever",
+    "born": "2021-08-07",
+    "owner": "Alice Johnson",
+    "appointments": 2
+  },
+  {
+    "id": 2,
+    "name": "Milo",
+    "species": "Cat",
+    "breed": "Siamese",
+    "born": "2020-03-15",
+    "owner": "John Smith",
+    "appointments": 1
+  },
+  {
+    "id": 3,
+    "name": "Bella",
+    "species": "Dog",
+    "breed": "French Bulldog",
+    "born": "2019-11-23",
+    "owner": "Emily Brown",
+    "appointments": 3
+  }
+]

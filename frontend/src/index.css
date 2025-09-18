@@ -1,13 +1,93 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+/* src/index.css */
+
+/* Modal animations & styling */
+.modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.25);
+  transform-origin: center;
+  animation: modalShow 180ms ease-out;
+  border: none;
+}
+
+/* header + footer */
+.modal-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.modal-header .modal-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.modal-footer {
+  padding: 0.9rem 1.25rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+/* body */
+.modal-body {
+  padding: 1rem 1.25rem;
+}
+
+/* nicer input look (works with bootstrap but slightly refined) */
+.form-control {
+  border-radius: 8px;
+  height: 42px;
+  box-shadow: none;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* primary action style tweaks */
+.btn-primary {
+  border-radius: 8px;
+  padding: 8px 14px;
+}
+
+/* subtle card hover */
+.card.h-100:hover {
+  transform: translateY(-6px);
+  transition: transform 160ms ease;
+}
+
+/* backdrop layering safety */
+.modal-portal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  z-index: 1040;
+}
+
+/* animate modal scale + fade */
+@keyframes modalShow {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* responsive: make modal dialog narrower on small screens */
+@media (max-width: 576px) {
+  .modal-dialog {
+    margin: 1.5rem;
+  }
 }
