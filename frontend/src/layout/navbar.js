@@ -48,7 +48,7 @@ export default function Navbar() {
                     <NavLink to="/" style={linkStyle} end>
                         Home
                     </NavLink>
-                    <NavLink to="/register/owner" style={linkStyle}>
+                    <NavLink to="/register/petOwner" style={linkStyle}>
                         Register Owner
                     </NavLink>
                     <NavLink to="/register/clinic" style={linkStyle}>

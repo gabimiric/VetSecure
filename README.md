@@ -7,7 +7,7 @@ cd frontend
 
 npm start
 
-(in front try to add an pet owner it shoul be written after"Saved!" if everything is fine)
+(in front try to add an pet petOwner it shoul be written after"Saved!" if everything is fine)
 
 
 
@@ -25,4 +25,4 @@ Password: apppass
 
 Database: vetsecure
 
-there if you look at the table with owners on left and open SELECT DATA the new owner will be shown.
+there if you look at the table with owners on left and open SELECT DATA the new petOwner will be shown.
