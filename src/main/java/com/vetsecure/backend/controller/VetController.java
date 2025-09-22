@@ -1,7 +1,12 @@
 package com.vetsecure.backend.controller;
 
+import com.vetsecure.backend.model.Clinic;
+import com.vetsecure.backend.model.User;
 import com.vetsecure.backend.model.Vet;
+import com.vetsecure.backend.repository.ClinicRepository;
+import com.vetsecure.backend.repository.UserRepository;
 import com.vetsecure.backend.repository.VetRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +16,12 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/vets")
 public class VetController {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ClinicRepository clinicRepository;
 
     @Autowired
     private VetRepository vetRepository;
@@ -26,18 +37,35 @@ public class VetController {
     }
 
     @PostMapping
+    @Transactional
     public Vet createVet(@RequestBody Vet vet) {
+        // Load existing clinic
+        Clinic existingClinic = clinicRepository.findById(vet.getClinic().getId())
+                .orElseThrow(() -> new RuntimeException("Clinic not found"));
+
+        // Attach managed clinic
+        vet.setClinic(existingClinic);
+
         return vetRepository.save(vet);
     }
 
+
     @PutMapping("/{id}")
+    @Transactional
     public Vet updateVet(@PathVariable Long id, @RequestBody Vet vetDetails) {
         Vet vet = vetRepository.findById(id).orElseThrow();
+
         vet.setFirstName(vetDetails.getFirstName());
         vet.setLastName(vetDetails.getLastName());
         vet.setLicense(vetDetails.getLicense());
         vet.setRole(vetDetails.getRole());
-        vet.setClinic(vetDetails.getClinic());
+
+        if (vetDetails.getClinic() != null) {
+            Clinic clinic = clinicRepository.findById(vetDetails.getClinic().getId())
+                    .orElseThrow(() -> new RuntimeException("Clinic not found"));
+            vet.setClinic(clinic);
+        }
+
         return vetRepository.save(vet);
     }
 

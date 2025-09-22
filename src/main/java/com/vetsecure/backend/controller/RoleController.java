@@ -33,7 +33,7 @@ public class RoleController {
     @PutMapping("/{id}")
     public Role updateRole(@PathVariable Long id, @RequestBody Role roleDetails) {
         Role role = roleRepository.findById(id).orElseThrow();
-        role.setRoleName(roleDetails.getRoleName());
+        role.setName(roleDetails.getName());
         return roleRepository.save(role);
     }
 

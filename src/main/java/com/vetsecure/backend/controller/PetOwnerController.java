@@ -1,16 +1,24 @@
 package com.vetsecure.backend.controller;
 
+import com.vetsecure.backend.model.Pet;
 import com.vetsecure.backend.model.PetOwner;
+import com.vetsecure.backend.model.User;
 import com.vetsecure.backend.repository.PetOwnerRepository;
+import com.vetsecure.backend.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/pet-owners")
 public class PetOwnerController {
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private PetOwnerRepository petOwnerRepository;
@@ -26,8 +34,17 @@ public class PetOwnerController {
     }
 
     @PostMapping
-    public PetOwner createPetOwner(@RequestBody PetOwner petOwner) {
-        return petOwnerRepository.save(petOwner);
+    @Transactional
+    public PetOwner createPetOwner(@RequestBody PetOwner po) {
+        // 1. Load the existing user from DB
+        User existingUser = userRepository.findById(po.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 2. Attach the user to PetOwner
+        po.setUser(existingUser);
+
+        // 3. Save PetOwner (Hibernate now knows user already exists)
+        return petOwnerRepository.save(po);
     }
 
     @PutMapping("/{id}")
