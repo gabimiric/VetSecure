@@ -11,14 +11,14 @@ CREATE TABLE IF NOT EXISTS users (
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- link owners -> users (owner account)
-ALTER TABLE owners
+-- link pet_owners -> users (petOwner account)
+ALTER TABLE pet_owners
     ADD COLUMN user_id BIGINT NULL;
 
-CREATE INDEX idx_owners_user_id ON owners(user_id);
+CREATE INDEX idx_pet_owners_user_id ON pet_owners(user_id);
 
-ALTER TABLE owners
-    ADD CONSTRAINT fk_owners_user
+ALTER TABLE pet_owners
+    ADD CONSTRAINT fk_pet_owners_user
         FOREIGN KEY (user_id) REFERENCES users(id);
 
 -- CLINIC REQUESTS (public form target)

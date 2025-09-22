@@ -16,7 +16,7 @@ export default function App() {
             <main style={{ minHeight: "70vh", padding: "16px" }}>
                 <Routes>
                     <Route path="/" element={<Home />} />
-                    <Route path="/register/owner" element={<OwnerForm />} />
+                    <Route path="/register/petOwner" element={<OwnerForm />} />
                     <Route path="/register/clinic" element={<ClinicRequestForm />} />
                     <Route path="/admin/requests" element={<AdminClinicRequests />} /> {/* <-- ADD THIS */}
                     <Route path="*" element={<Navigate to="/" replace />} />
