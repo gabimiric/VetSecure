@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface OwnerRepository extends JpaRepository<PetOwner, Long> {
-    boolean existsByEmail(String email);
-    Optional<PetOwner> findByEmail(String email);
+    boolean existsByUser_EmailIgnoreCase(String email);
+    Optional<PetOwner> findByUser_EmailIgnoreCase(String email);
 }

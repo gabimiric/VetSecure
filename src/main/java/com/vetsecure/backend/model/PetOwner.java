@@ -1,6 +1,7 @@
 package com.vetsecure.backend.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 
 @Entity
@@ -11,12 +12,18 @@ public class PetOwner {
 
     @OneToOne
     @MapsId
-    @JoinColumn(name = "id")
+    @JoinColumn(name = "id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "clinic_id", nullable = false)
+    private Clinic clinic;
+
+    @NotBlank
     @Column(nullable = false)
     private String firstName;
 
+    @NotBlank
     @Column(nullable = false)
     private String lastName;
 
@@ -25,11 +32,14 @@ public class PetOwner {
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Pet> pets;
 
-    // Getters and Setters
+    // --- Getters / setters ---
     public Long getId() { return id; }
 
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
+
+    public Clinic getClinic() { return clinic; }
+    public void setClinic(Clinic clinic) { this.clinic = clinic; }
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -42,4 +52,8 @@ public class PetOwner {
 
     public List<Pet> getPets() { return pets; }
     public void setPets(List<Pet> pets) { this.pets = pets; }
+
+    // Convenience (optional)
+    @Transient
+    public String getFullName() { return firstName + " " + lastName; }
 }
