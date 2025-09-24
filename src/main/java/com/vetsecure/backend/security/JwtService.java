@@ -17,6 +17,9 @@ public class JwtService {
 
     private final SecretKey key;
     private final long ttlMillis;
+    private static final String ISS = "vetsecure";
+    private static final String AUD = "vetsecure-api";
+    private static final long SKEW_MS = 30_000;
 
     public JwtService(
             @Value("${jwt.secret:CHANGE_ME_32CHARS_MINIMUM}") String secret,
@@ -29,18 +32,21 @@ public class JwtService {
     public String generate(String subjectEmail) {
         long now = System.currentTimeMillis();
         return Jwts.builder()
+                .setIssuer(ISS).setAudience(AUD)
                 .setSubject(subjectEmail)
                 .setIssuedAt(new Date(now))
                 .setExpiration(new Date(now + ttlMillis))
-                .signWith(key, SignatureAlgorithm.HS256) // 0.11.5 style
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    /** Parse and return the full JWS; use getBody() to read Claims. */
     public Jws<Claims> parse(String token) {
-        return Jwts.parserBuilder()            // 0.11.5 style
+        return Jwts.parserBuilder()
                 .setSigningKey(key)
+                .requireIssuer(ISS).requireAudience(AUD)
+                .setAllowedClockSkewSeconds(SKEW_MS / 1000)
                 .build()
                 .parseClaimsJws(token);
     }
+
 }
