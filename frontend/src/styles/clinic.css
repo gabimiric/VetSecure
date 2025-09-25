@@ -1,0 +1,153 @@
+/* Clinic request form styles — src/styles/clinic.css */
+
+:root {
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --text: #0f1724;
+  --primaryA: #6366f1;
+  --primaryB: #2563eb;
+  --success: #10b981;
+  --danger: #ef4444;
+  --radius: 12px;
+  --shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+  --input-border: #e6e9ee;
+}
+
+.clinic-screen {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 28px 16px;
+  background: var(--bg);
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+}
+
+.clinic-card {
+  width: 100%;
+  max-width: 720px;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  border: 1px solid rgba(16, 24, 40, 0.04);
+}
+
+.clinic-title {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.clinic-sub {
+  margin: 0 0 16px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Form layout */
+.clinic-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+
+.clinic-form .full {
+  grid-column: 1 / -1;
+}
+
+/* Label + input */
+.clinic-label {
+  display: block;
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.clinic-input,
+.clinic-select {
+  width: 100%; /* guaranteed full width */
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--input-border);
+  background: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: box-shadow 0.14s ease, border-color 0.12s ease,
+    transform 0.06s ease;
+  box-sizing: border-box;
+}
+
+.clinic-input:focus,
+.clinic-select:focus {
+  border-color: #c7d2fe;
+  box-shadow: 0 8px 24px rgba(59, 91, 219, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Single column on small screens */
+@media (max-width: 720px) {
+  .clinic-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Alert messages */
+.clinic-alert {
+  padding: 12px;
+  border-radius: 10px;
+  margin: 12px 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+.clinic-alert.ok {
+  background: #ecfdf5;
+  border: 1px solid #34d399;
+  color: #064e3b;
+}
+.clinic-alert.err {
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  color: #7f1d1d;
+}
+
+/* Submit button */
+.clinic-submit {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 0;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(90deg, var(--primaryA), var(--primaryB));
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.clinic-submit:disabled {
+  opacity: 0.75;
+  cursor: default;
+  filter: grayscale(0.03);
+}
+
+/* helper / smaller text */
+.clinic-help {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* tidy up file-level layout for headings & notes */
+.clinic-hr {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 18px 0;
+  border-radius: 1px;
+}

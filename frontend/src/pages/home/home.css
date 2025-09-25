@@ -1,0 +1,4 @@
+.home-wrap { max-width: 960px; margin: 40px auto; padding: 0 16px; }
+.home-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap:16px; margin-top:16px; }
+.tile { display:flex; align-items:center; justify-content:center; height:120px; border-radius:16px; background:#fff; color:#111827; text-decoration:none; font-weight:600; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+.tile:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(0,0,0,0.12); }
