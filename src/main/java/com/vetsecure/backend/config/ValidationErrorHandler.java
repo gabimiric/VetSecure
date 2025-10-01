@@ -2,6 +2,7 @@ package com.vetsecure.backend.config;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -33,5 +34,13 @@ public class ValidationErrorHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("error", ex.getMessage());
         return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<?> handleDataIntegrity(DataIntegrityViolationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "conflict");
+        body.put("message", "Username or email already exists");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 }

@@ -7,6 +7,7 @@ import com.vetsecure.backend.repository.PetOwnerRepository;
 import com.vetsecure.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -29,8 +30,10 @@ public class PetOwnerController {
     }
 
     @GetMapping("/{id}")
-    public Optional<PetOwner> getPetOwner(@PathVariable Long id) {
-        return petOwnerRepository.findById(id);
+    public ResponseEntity<PetOwner> getPetOwner(@PathVariable Long id) {
+        return petOwnerRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping

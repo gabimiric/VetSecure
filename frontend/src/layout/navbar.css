@@ -1,0 +1,102 @@
+/* src/layout/navbar.css */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
+}
+
+.navbar {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 18px;
+  color: #111827;
+  text-decoration: none;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Links cluster */
+.nav-links {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Individual link */
+.nav-link {
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #374151;
+  font-weight: 600;
+  transition: background 0.12s, color 0.12s;
+}
+.nav-link:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* active link style */
+.nav-link.active {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+/* Profile pill */
+.profile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  background: transparent;
+  color: #111827;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.profile-pill:hover {
+  background: #f8fafc;
+}
+.profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* Responsive behavior */
+@media (max-width: 860px) {
+  .navbar {
+    padding: 10px 12px;
+  }
+  .nav-links {
+    gap: 6px;
+  }
+  .brand {
+    font-size: 16px;
+  }
+}

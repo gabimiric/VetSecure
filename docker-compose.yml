@@ -19,12 +19,21 @@ services:
       - --default-authentication-plugin=mysql_native_password
       - --sql-mode=STRICT_TRANS_TABLES
     ports:
-      - "3306:3306"        # expose for LOCAL DEV only (remove in prod)
+      - "3307:3306" # expose for LOCAL DEV only (remove in prod)
     volumes:
       - mysqldata:/var/lib/mysql
     networks: [appnet]
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uappuser", "-papppass"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-uappuser",
+          "-papppass",
+        ]
       interval: 5s
       retries: 20
 
@@ -32,7 +41,7 @@ services:
     image: adminer:latest
     container_name: vetsecure-adminer
     ports:
-      - "8081:8080"        # web DB console at http://localhost:8081
+      - "8081:8080" # web DB console at http://localhost:8081
     depends_on:
       mysql:
         condition: service_healthy

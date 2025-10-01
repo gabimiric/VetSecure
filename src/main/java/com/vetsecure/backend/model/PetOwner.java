@@ -2,6 +2,7 @@ package com.vetsecure.backend.model;
 
 import jakarta.persistence.*;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "pet_owners")
@@ -23,6 +24,7 @@ public class PetOwner {
     private String phone;
 
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore // This would prevent the lazy loading issue
     private List<Pet> pets;
 
     // Getters and Setters

@@ -1,0 +1,129 @@
+:root {
+  --bg: #f6f8fb;
+  --card: #fff;
+  --text: #111827;
+  --muted: #6b7280;
+  --primaryA: #5b8cff;
+  --primaryB: #3b5bdb;
+  --radius: 12px;
+  --shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+  --input-border: #e5e7eb;
+}
+
+/* page / card */
+.screen {
+  min-height: calc(100vh - 80px);
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+  background: var(--bg);
+}
+
+.card {
+  width: 100%;
+  max-width: 720px;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  border: 1px solid rgba(18, 23, 31, 0.03);
+}
+
+.title {
+  margin: 0 0 18px 0;
+  font-size: 20px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* label wrapper: make it full-width and ensure its input stacks under it */
+.label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+}
+
+/* text field shared style (same naming used across your app) */
+.tf,
+.tf:focus {
+  width: 100% !important; /* ensure max width */
+  display: block;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--input-border);
+  background: #fff;
+  font-size: 15px;
+  box-sizing: border-box;
+  outline: none;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease,
+    transform 0.05s ease;
+}
+
+.tf:focus {
+  border-color: #c7d2fe;
+  box-shadow: 0 8px 26px rgba(59, 91, 219, 0.08);
+  transform: translateY(-1px);
+}
+
+/* two column row for gender + weight */
+.two-col {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* ensure labels inside two-col expand and inputs still full width */
+.two-col .label {
+  flex: 1;
+  margin-bottom: 0; /* labels already include input margin */
+}
+
+/* primary button like other pages */
+.primary {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 0;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  background: linear-gradient(180deg, var(--primaryA), var(--primaryB));
+  box-shadow: 0 10px 30px rgba(59, 91, 219, 0.16);
+}
+
+/* messages */
+.error {
+  color: #b00020;
+  margin-top: 10px;
+  font-weight: 600;
+}
+.success {
+  color: #0a7a2f;
+  margin-top: 10px;
+  font-weight: 700;
+}
+
+/* small note */
+.card small.note {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* responsive: stack two-col on small screens */
+@media (max-width: 600px) {
+  .card {
+    padding: 18px;
+    border-radius: 10px;
+  }
+  .two-col {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

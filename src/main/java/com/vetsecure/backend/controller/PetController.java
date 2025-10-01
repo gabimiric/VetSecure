@@ -1,6 +1,8 @@
 package com.vetsecure.backend.controller;
 
 import com.vetsecure.backend.model.Pet;
+import com.vetsecure.backend.model.PetOwner;
+import com.vetsecure.backend.repository.PetOwnerRepository;
 import com.vetsecure.backend.repository.PetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +17,9 @@ public class PetController {
     @Autowired
     private PetRepository petRepository;
 
+    @Autowired
+    private PetOwnerRepository petOwnerRepository;
+
     @GetMapping
     public List<Pet> getAllPets() {
         return petRepository.findAll();
@@ -27,6 +32,12 @@ public class PetController {
 
     @PostMapping
     public Pet createPet(@RequestBody Pet pet) {
+        if (pet.getOwner() == null || pet.getOwner().getId() == null) {
+            throw new IllegalArgumentException("Owner id is required");
+        }
+        PetOwner owner = petOwnerRepository.findById(pet.getOwner().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Owner not found"));
+        pet.setOwner(owner);
         return petRepository.save(pet);
     }
 
@@ -46,5 +57,10 @@ public class PetController {
     @DeleteMapping("/{id}")
     public void deletePet(@PathVariable Long id) {
         petRepository.deleteById(id);
+    }
+
+    @GetMapping("/owner/{ownerId}")
+    public List<Pet> getPetsByOwner(@PathVariable Long ownerId) {
+        return petRepository.findByOwnerId(ownerId);
     }
 }

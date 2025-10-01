@@ -1,0 +1,118 @@
+/* src/styles/home.css */
+
+:root {
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --text: #0f1724;
+  --primaryA: #5b8cff;
+  --primaryB: #3b5bdb;
+  --radius: 14px;
+  --shadow: 0 14px 40px rgba(16, 24, 40, 0.06);
+}
+
+.home-screen {
+  min-height: calc(100vh - 92px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 36px 16px;
+  background: var(--bg);
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+}
+
+.home-card {
+  width: 100%;
+  max-width: 1000px;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  border: 1px solid rgba(16, 24, 40, 0.04);
+}
+
+.home-hero {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  justify-content: space-between;
+}
+
+.home-title {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.home-sub {
+  margin: 0 0 18px 0;
+  color: var(--muted);
+  font-size: 15px;
+  max-width: 56ch;
+}
+
+.home-ctas {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--primaryA), var(--primaryB));
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(59, 91, 219, 0.12);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid #e6e9ee;
+}
+
+.home-illustration {
+  flex-shrink: 0;
+}
+
+/* features */
+.home-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.feature h4 {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+/* responsive */
+@media (max-width: 860px) {
+  .home-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .home-illustration {
+    align-self: stretch;
+    margin-top: 12px;
+  }
+  .home-features {
+    grid-template-columns: 1fr;
+  }
+}

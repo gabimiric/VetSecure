@@ -1,131 +1,141 @@
+// src/pages/admin/AdminClinicRequests.jsx
 import React, { useEffect, useState } from "react";
-import {
-    getAdminClinicRequests,
-    approveClinicRequest,
-    rejectClinicRequest,
-} from "../api/client";
-
-const pill = (s) => ({
-    display: "inline-block",
-    padding: "2px 8px",
-    borderRadius: 999,
-    background:
-        s === "PENDING" ? "#fef3c7" : s === "APPROVED" ? "#dcfce7" : "#fee2e2",
-    color: "#111827",
-    fontSize: 12,
-    fontWeight: 700,
-});
+import { AuthService } from "../services/AuthService";
+import "../styles/admin-requests.css";
 
 export default function AdminClinicRequests() {
-    const [status, setStatus] = useState("PENDING");
-    const [rows, setRows] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [err, setErr] = useState("");
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null); // id being acted on
+  const [error, setError] = useState(null);
 
-    async function load() {
-        setLoading(true);
-        setErr("");
-        try {
-            const data = await getAdminClinicRequests(status);
-            setRows(data);
-        } catch (e) {
-            setErr(e.message || "Failed to load");
-        } finally {
-            setLoading(false);
-        }
+  useEffect(() => {
+    loadRequests();
+  }, []);
+
+  async function loadRequests() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/admin/clinic-requests?status=PENDING", {
+        headers: {
+          ...AuthService.authHeader(),
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to load: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setRequests(data || []);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load requests");
+      setRequests([]);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    useEffect(() => {
-        load(); // reload when status changes
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [status]);
+  async function setRequestStatus(id, status) {
+    // Example: PUT /admin/clinic-requests/{id} with body { status: "APPROVED" }
+    // If your backend uses a different route, update it here.
+    setActionLoading(id);
+    try {
+      const res = await fetch(`/admin/clinic-requests/${id}`, {
+        method: "PUT",
+        headers: {
+          ...AuthService.authHeader(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
 
-    async function doApprove(id) {
-        await approveClinicRequest(id, "admin");
-        await load();
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || `Failed to update: ${res.status}`);
+      }
+
+      // optimistic update
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Action failed");
+    } finally {
+      setActionLoading(null);
     }
-    async function doReject(id) {
-        await rejectClinicRequest(id, "admin");
-        await load();
-    }
+  }
 
-    return (
-        <div style={{ maxWidth: 1000, margin: "24px auto", padding: "0 16px" }}>
-            <h2>Clinic requests</h2>
+  const approveRequest = (id) => setRequestStatus(id, "APPROVED");
+  const rejectRequest = (id) => setRequestStatus(id, "REJECTED");
 
-            <div style={{ margin: "12px 0" }}>
-                <label style={{ fontWeight: 600, marginRight: 8 }}>Filter:</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="PENDING">PENDING</option>
-                    <option value="APPROVED">APPROVED</option>
-                    <option value="REJECTED">REJECTED</option>
-                </select>
-            </div>
-
-            {err && (
-                <div
-                    style={{
-                        background: "#fef2f2",
-                        border: "1px solid #fecaca",
-                        padding: 10,
-                        borderRadius: 8,
-                    }}
-                >
-                    {err}
-                </div>
-            )}
-            {loading && <p>Loading…</p>}
-            {!loading && rows.length === 0 && <p>No items.</p>}
-
-            {!loading && rows.length > 0 && (
-                <div
-                    style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}
-                >
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead style={{ background: "#f9fafb" }}>
-                        <tr>
-                            <th style={{ textAlign: "left", padding: 10 }}>#</th>
-                            <th style={{ textAlign: "left", padding: 10 }}>Clinic</th>
-                            <th style={{ textAlign: "left", padding: 10 }}>Admin</th>
-                            <th style={{ textAlign: "left", padding: 10 }}>Email</th>
-                            <th style={{ textAlign: "left", padding: 10 }}>City</th>
-                            <th style={{ textAlign: "left", padding: 10 }}>Phone</th>
-                            <th style={{ textAlign: "left", padding: 10 }}>Status</th>
-                            <th style={{ textAlign: "left", padding: 10 }}>Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {rows.map((r) => (
-                            <tr key={r.id} style={{ borderTop: "1px solid #e5e7eb" }}>
-                                <td style={{ padding: 10 }}>{r.id}</td>
-                                <td style={{ padding: 10 }}>{r.clinicName}</td>
-                                <td style={{ padding: 10 }}>{r.adminName}</td>
-                                <td style={{ padding: 10 }}>{r.adminEmail}</td>
-                                <td style={{ padding: 10 }}>{r.city || "-"}</td>
-                                <td style={{ padding: 10 }}>{r.phone || "-"}</td>
-                                <td style={{ padding: 10 }}>
-                                    <span style={pill(r.status)}>{r.status}</span>
-                                </td>
-                                <td style={{ padding: 10 }}>
-                                    {r.status === "PENDING" ? (
-                                        <>
-                                            <button onClick={() => doApprove(r.id)} style={{ marginRight: 8 }}>
-                                                Approve
-                                            </button>
-                                            <button onClick={() => doReject(r.id)} style={{ color: "#b91c1c" }}>
-                                                Reject
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <em>—</em>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+  return (
+    <div className="admin-requests-screen">
+      <div className="admin-requests-card">
+        <div className="admin-header">
+          <h2 className="admin-title">Clinic Onboarding Requests</h2>
+          <p className="admin-sub">
+            Review pending clinic requests and approve or reject them.
+          </p>
         </div>
-    );
+
+        {error && <div className="admin-alert err">{error}</div>}
+
+        {loading ? (
+          <div className="admin-loading">Loading requests…</div>
+        ) : requests.length === 0 ? (
+          <div className="admin-empty">
+            <h4>No pending requests</h4>
+            <p className="muted">
+              You’ll see new clinic requests here as they arrive.
+            </p>
+          </div>
+        ) : (
+          <div className="requests-list">
+            {requests.map((r) => (
+              <div key={r.id} className="request-card">
+                <div className="request-main">
+                  <div className="request-title">{r.clinicName}</div>
+                  <div className="request-meta muted">
+                    {r.city ? `${r.city} • ` : ""}
+                    {r.address || "Address not provided"}
+                  </div>
+                  <div className="request-admin">
+                    <div>
+                      <strong>Admin:</strong> {r.adminName || "—"}
+                    </div>
+                    <div>
+                      <strong>Email:</strong> {r.adminEmail || "—"}
+                    </div>
+                    <div>
+                      <strong>Phone:</strong> {r.phone || "—"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="request-actions">
+                  <button
+                    className="btn-ghost"
+                    onClick={() => rejectRequest(r.id)}
+                    disabled={actionLoading === r.id}
+                  >
+                    {actionLoading === r.id ? "Working…" : "Reject"}
+                  </button>
+                  <button
+                    className="btn-approve"
+                    onClick={() => approveRequest(r.id)}
+                    disabled={actionLoading === r.id}
+                  >
+                    {actionLoading === r.id ? "Working…" : "Approve"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

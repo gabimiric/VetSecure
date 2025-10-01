@@ -24,10 +24,17 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
+        <!-- Spring Boot Starter Security -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    
+    <!-- Spring Boot Starter Web -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -56,6 +63,11 @@
             <artifactId>flyway-mysql</artifactId>
             <version>11.7.2</version>
         </dependency>
+        <dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+
     </dependencies>
 
     <build>
@@ -69,7 +81,7 @@
                 <artifactId>flyway-maven-plugin</artifactId>
                 <version>11.7.2</version>
                 <configuration>
-                    <url>jdbc:mysql://127.0.0.1:3306/vetsecure</url>
+                    <url>jdbc:mysql://127.0.0.1:3307/vetsecure</url>
                     <user>appuser</user>
                     <password>apppass</password>
                 </configuration>
