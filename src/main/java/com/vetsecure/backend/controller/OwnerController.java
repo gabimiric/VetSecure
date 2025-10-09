@@ -6,6 +6,7 @@ import com.vetsecure.backend.repository.PetOwnerRepository;
 import com.vetsecure.backend.repository.UserRepository;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -23,19 +24,24 @@ public class OwnerController {
         this.users = users;
     }
 
+    /** List all owners – clinic staff/admin/vet/assistant (hierarchy allows SUPER_ADMIN too) */
     @GetMapping
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN','VET','ASSISTANT','SUPER_ADMIN')")
     public List<PetOwner> all() {
         return owners.findAll();
     }
 
+    /** Get one owner – allowed to clinic staff/admin/vet/assistant OR the owner themself */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN','VET','ASSISTANT','SUPER_ADMIN') or @authz.isSelfOwner(authentication, #id)")
     public ResponseEntity<PetOwner> one(@PathVariable Long id) {
         return owners.findById(id).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /** Create a PetOwner for the currently authenticated user */
+    /** Create a PetOwner for the current user – only if they don't already have one */
     @PostMapping("/me")
+    @PreAuthorize("@authz.canCreateOwnerForSelf(authentication)")
     public ResponseEntity<?> createForCurrentUser(
             @RequestParam @NotBlank String firstName,
             @RequestParam @NotBlank String lastName,
