@@ -6,8 +6,12 @@ import jakarta.persistence.*;
 @Table(name = "vets")
 public class Vet {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long id; // same as user.id
+
+    @OneToOne
+    @MapsId
+    @JoinColumn(name = "id")
+    private User user;
 
     @ManyToOne
     @JoinColumn(name = "clinic_id", nullable = false)
@@ -27,6 +31,9 @@ public class Vet {
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 
     public Clinic getClinic() { return clinic; }
     public void setClinic(Clinic clinic) { this.clinic = clinic; }

@@ -39,11 +39,16 @@ public class VetController {
     @PostMapping
     @Transactional
     public Vet createVet(@RequestBody Vet vet) {
+        // Load and attach existing User
+        User existingUser = userRepository.findById(vet.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         // Load existing clinic
         Clinic existingClinic = clinicRepository.findById(vet.getClinic().getId())
                 .orElseThrow(() -> new RuntimeException("Clinic not found"));
 
-        // Attach managed clinic
+        // Attach managed user & clinic
+        vet.setUser(existingUser);
         vet.setClinic(existingClinic);
 
         return vetRepository.save(vet);
