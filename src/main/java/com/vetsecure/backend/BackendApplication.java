@@ -12,7 +12,16 @@ import java.sql.ResultSet;
 public class BackendApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(BackendApplication.class, args);
+        SpringApplication app = new SpringApplication(BackendApplication.class);
+        
+        // Set dev profile as default if no profile is specified
+        // This allows IDE runs to work without SSL keystore issues
+        String activeProfile = System.getProperty("spring.profiles.active");
+        if (activeProfile == null || activeProfile.isEmpty()) {
+            app.setDefaultProperties(java.util.Map.of("spring.profiles.active", "dev"));
+        }
+        
+        app.run(args);
     }
 
     // Quick verification that Spring can connect to MySQL

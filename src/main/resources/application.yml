@@ -1,0 +1,23 @@
+# application.yml  (or application-local.yml if you run with profile "local")
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+      hibernate.dialect: org.hibernate.dialect.MySQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+# Encryption Configuration
+vetsecure:
+  encryption:
+    # These values should be set in the environment or a secure configuration store
+    # AesBytesEncryptor requires hex-encoded keys (16 bytes = 32 hex chars for AES-128)
+    # The following are example values - DO NOT USE IN PRODUCTION
+    secret: ${VETSECURE_ENCRYPTION_SECRET:59480ff9b9375d4e0362f80d0cd7ea01}
+    salt: ${VETSECURE_ENCRYPTION_SALT:19c81454b5dc034322b95d1f6979c62c}
+
