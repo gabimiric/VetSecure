@@ -1,9 +1,11 @@
 package com.vetsecure.backend.security;
 
 import com.vetsecure.backend.repository.PetOwnerRepository;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-
+@Profile("!oauth")
 @Component("authz") // used in @PreAuthorize as @authz
 public class Authz {
 

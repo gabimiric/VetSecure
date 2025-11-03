@@ -4,6 +4,7 @@ import com.vetsecure.backend.model.Pet;
 import com.vetsecure.backend.repository.PetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,21 +17,25 @@ public class PetController {
     private PetRepository petRepository;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('SCOPE_pets:read')")
     public List<Pet> getAllPets() {
         return petRepository.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('SCOPE_pets:read')")
     public Optional<Pet> getPet(@PathVariable Long id) {
         return petRepository.findById(id);
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('SCOPE_pets:write')")
     public Pet createPet(@RequestBody Pet pet) {
         return petRepository.save(pet);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('SCOPE_pets:write')")
     public Pet updatePet(@PathVariable Long id, @RequestBody Pet petDetails) {
         Pet pet = petRepository.findById(id).orElseThrow();
         pet.setName(petDetails.getName());
@@ -44,6 +49,7 @@ public class PetController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('SCOPE_pets:write')")
     public void deletePet(@PathVariable Long id) {
         petRepository.deleteById(id);
     }

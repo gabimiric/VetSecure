@@ -4,6 +4,8 @@ import com.vetsecure.backend.model.User;
 import com.vetsecure.backend.repository.UserRepository;
 import com.vetsecure.backend.security.JwtService;              // ✅ add
 import com.vetsecure.backend.security.mfa.MfaService;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -13,6 +15,7 @@ import java.util.HashMap;                                      // ✅ add
 import java.util.List;
 import java.util.Map;
 
+@Profile("!oauth")
 @RestController
 @RequestMapping("/auth/mfa")
 public class MfaController {
