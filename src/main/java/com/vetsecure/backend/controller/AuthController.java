@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 record LoginRequest(String email, String password) {}
 record TokenResponse(String token) {}                         // <-- unchanged
 record MfaChallengeResponse(boolean mfaRequired, String mfaToken, long expiresInSeconds) {}
-@Profile("!oauth")
+@Profile("!google")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

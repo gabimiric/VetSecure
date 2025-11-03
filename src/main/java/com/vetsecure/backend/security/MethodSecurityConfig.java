@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-@Profile("!oauth")
+@Profile("!google")
 @Configuration
 @EnableMethodSecurity // enables @PreAuthorize / @PostAuthorize
 public class MethodSecurityConfig {

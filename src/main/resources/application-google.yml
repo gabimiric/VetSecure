@@ -1,0 +1,24 @@
+server:
+  port: 8082
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Google OIDC issuer
+          issuer-uri: https://accounts.google.com
+
+# Audience (aud) must contain your Google OAuth Client ID
+google:
+  oauth:
+    client-id: " 546784338173-keh6ir709uiip9dqkp79k4lnua4mr4k3.apps.googleusercontent.com"
+
+# Simple email→role mapping so @PreAuthorize(hasRole(...)) continues to work
+app:
+  security:
+    google:
+      super-admin-emails: ["sandacrudu72@gmail.com"]
+      clinic-admin-emails: ["alexandra.crudu@isa.utm.md"]
+      vet-emails: ["vet1@yourclinic.com"]             # gets ROLE_VET
+      assistant-emails: ["assistant@yourclinic.com"]  # gets ROLE_ASSISTANT

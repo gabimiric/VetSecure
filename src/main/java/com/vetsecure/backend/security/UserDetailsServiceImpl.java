@@ -9,7 +9,7 @@ import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-@Profile("!oauth")
+@Profile("!google")
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
     private final UserRepository users;

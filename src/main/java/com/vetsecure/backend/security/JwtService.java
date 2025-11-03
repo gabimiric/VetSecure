@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Map;
 
-@Profile("!oauth")
+@Profile("!google")
 @Component
 public class JwtService {
 

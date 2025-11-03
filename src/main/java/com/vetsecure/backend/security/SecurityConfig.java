@@ -27,7 +27,7 @@ import java.util.List;
 
 
 @Configuration
-@Profile("!oauth") 
+@Profile("!google")
 @EnableMethodSecurity
 public class SecurityConfig {
 

@@ -15,7 +15,7 @@ import java.util.HashMap;                                      // ✅ add
 import java.util.List;
 import java.util.Map;
 
-@Profile("!oauth")
+@Profile("!google")
 @RestController
 @RequestMapping("/auth/mfa")
 public class MfaController {
