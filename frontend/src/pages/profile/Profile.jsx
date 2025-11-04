@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthService } from "../../services/AuthService";
+import { api } from "../../services/http";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -10,6 +11,11 @@ export default function Profile() {
   const [petOwner, setPetOwner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null);
+  
+  // MFA state
+  const [mfaSetupData, setMfaSetupData] = useState(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaStatus, setMfaStatus] = useState(null);
 
   useEffect(() => {
     if (!user?.id) {
@@ -21,37 +27,22 @@ export default function Profile() {
       setLoading(true);
       // inside useEffect load() in Profile.jsx
       try {
-        const res = await fetch(`/users/${user.id}`, {
-          headers: {
-            "Content-Type": "application/json",
-            ...AuthService.authHeader(),
-          },
-        });
-        const txt = await res.text();
-        if (!res.ok)
-          throw new Error(txt || `Failed to fetch user (${res.status})`);
-        const u = txt ? JSON.parse(txt) : null;
+        const res = await api.get(`/users/${user.id}`);
+        const u = res.data;
         setUser(u);
 
         if (u && u.role && u.role.name === "PET_OWNER") {
-          const r = await fetch(`/pet-owners/${u.id}`, {
-            headers: {
-              "Content-Type": "application/json",
-              ...AuthService.authHeader(),
-            },
-          });
-          const t2 = await r.text();
-          if (r.ok && t2) setPetOwner(JSON.parse(t2));
-          else setPetOwner(null);
+          const r = await api.get(`/pet-owners/${u.id}`);
+          setPetOwner(r.data);
         } else {
           setPetOwner(null);
         }
       } catch (err) {
         console.error("Error: ", err);
-        alert("Failed to fetch user: " + (err.message || err));
-        return;
+        alert("Failed to fetch user: " + (err.response?.data || err.message || err));
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     load();
@@ -75,15 +66,7 @@ export default function Profile() {
     try {
       // Update user (do not send role or passwordHash)
       const payload = { username: user.username, email: user.email };
-      const res = await fetch(`/users/${user.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...AuthService.authHeader(),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const res = await api.put(`/users/${user.id}`, payload);
 
       // Update pet owner if applicable
       if (petOwner) {
@@ -93,19 +76,11 @@ export default function Profile() {
           phone: petOwner.phone,
           pets: petOwner.pets, // preserve pets array if backend expects it
         };
-        const r = await fetch(`/pet-owners/${petOwner.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...AuthService.authHeader(),
-          },
-          body: JSON.stringify(poPayload),
-        });
-        if (!r.ok) throw new Error(await r.text());
+        await api.put(`/pet-owners/${petOwner.id}`, poPayload);
       }
 
       // refresh local user cache
-      const updated = await res.json();
+      const updated = res.data;
       // AuthService stores current_user in session/local storage; update it
       const storage = localStorage.getItem("access_token")
         ? localStorage
@@ -148,16 +123,48 @@ export default function Profile() {
     );
     if (!ok) return;
     try {
-      const res = await fetch(`/users/${user.id}`, {
-        method: "DELETE",
-        headers: { ...AuthService.authHeader() },
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await api.delete(`/users/${user.id}`);
       AuthService.logout();
       navigate("/", { replace: true });
     } catch (err) {
       console.error(err);
       alert("Failed to delete account: " + err.message);
+    }
+  };
+
+  // MFA Setup
+  const startMfaSetup = async () => {
+    setMfaStatus("loading");
+    try {
+      const res = await api.post("/auth/mfa/setup");
+      setMfaSetupData(res.data);
+      setMfaStatus(null);
+    } catch (err) {
+      console.error("MFA setup error:", err);
+      console.error("Error response:", err.response);
+      setMfaStatus("error");
+      const errorMessage = typeof err.response?.data === 'string' 
+        ? err.response.data 
+        : JSON.stringify(err.response?.data) || err.message;
+      alert("Failed to start MFA setup: " + errorMessage);
+    }
+  };
+
+  const verifyMfaSetup = async (e) => {
+    e.preventDefault();
+    setMfaStatus("verifying");
+    try {
+      await api.post("/auth/mfa/verify-setup", { code: mfaCode });
+      setMfaStatus("success");
+      setMfaSetupData(null);
+      setMfaCode("");
+      alert("✅ MFA enabled successfully! Log out and try logging in again to test it.");
+      // Refresh user data
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      setMfaStatus("error");
+      alert("Failed to verify code: " + (err.response?.data || err.message));
     }
   };
 
@@ -217,6 +224,107 @@ export default function Profile() {
             >
               {user.role?.name || "—"}
             </div>
+          </div>
+
+          {/* MFA Setup Section */}
+          <div style={{ marginTop: 24, marginBottom: 24, padding: 16, background: "#f0fdf4", borderRadius: 12, border: "1px solid #86efac" }}>
+            <h4 style={{ marginTop: 0 }}>Two-Factor Authentication (MFA)</h4>
+            <p style={{ fontSize: 14, color: "#666", marginBottom: 12 }}>
+              Protect your account with an extra layer of security.
+            </p>
+
+            {!mfaSetupData ? (
+              <button
+                type="button"
+                onClick={startMfaSetup}
+                disabled={mfaStatus === "loading"}
+                style={{
+                  padding: "10px 16px",
+                  background: "#10b981",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: mfaStatus === "loading" ? "wait" : "pointer",
+                  fontSize: 14,
+                  fontWeight: 500
+                }}
+              >
+                {mfaStatus === "loading" ? "Setting up..." : "🔐 Enable MFA"}
+              </button>
+            ) : (
+              <div>
+                <p style={{ fontWeight: 600, marginBottom: 8 }}>Scan this QR code with Google Authenticator:</p>
+                <img 
+                  src={mfaSetupData.qr} 
+                  alt="MFA QR Code" 
+                  style={{ maxWidth: 256, border: "2px solid #ddd", borderRadius: 8, marginBottom: 12 }}
+                />
+                
+                <p style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
+                  Or manually enter this secret: <code style={{ background: "#fff", padding: "2px 6px", borderRadius: 4 }}>{mfaSetupData.secret}</code>
+                </p>
+
+                <p style={{ fontWeight: 600, marginBottom: 8, color: "#dc2626" }}>
+                  ⚠️ Save these recovery codes (one-time use):
+                </p>
+                <div style={{ background: "#fff", padding: 12, borderRadius: 8, marginBottom: 12, fontFamily: "monospace", fontSize: 13 }}>
+                  {mfaSetupData.recoveryCodes.join(", ")}
+                </div>
+
+                <form onSubmit={verifyMfaSetup} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength="6"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Enter 6-digit code"
+                    required
+                    style={{
+                      padding: "10px 12px",
+                      border: "2px solid #ddd",
+                      borderRadius: 8,
+                      fontSize: 16,
+                      width: 180,
+                      textAlign: "center",
+                      letterSpacing: 4
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={mfaCode.length !== 6 || mfaStatus === "verifying"}
+                    style={{
+                      padding: "10px 16px",
+                      background: mfaCode.length === 6 ? "#10b981" : "#ccc",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      cursor: mfaCode.length === 6 && mfaStatus !== "verifying" ? "pointer" : "not-allowed",
+                      fontSize: 14,
+                      fontWeight: 500
+                    }}
+                  >
+                    {mfaStatus === "verifying" ? "Verifying..." : "Verify & Enable"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMfaSetupData(null); setMfaCode(""); }}
+                    style={{
+                      padding: "10px 16px",
+                      background: "#ef4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      fontSize: 14
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
 
           {petOwner && (

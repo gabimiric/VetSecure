@@ -5,7 +5,6 @@ import com.vetsecure.backend.repository.UserRepository;
 import com.vetsecure.backend.security.JwtService;              // ✅ add
 import com.vetsecure.backend.security.mfa.MfaService;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -15,7 +14,7 @@ import java.util.HashMap;                                      // ✅ add
 import java.util.List;
 import java.util.Map;
 
-@Profile("!google")
+// Removed @Profile("!google") so MFA works with both traditional and OAuth login
 @RestController
 @RequestMapping("/auth/mfa")
 public class MfaController {
@@ -36,17 +35,18 @@ public class MfaController {
     @PostMapping("/setup")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> setup(org.springframework.security.core.Authentication auth) throws Exception {
-        String email = auth.getName();
-        User user = users.findByEmail(email).orElseThrow();
+        // auth.getName() returns the JWT subject, which is the user ID
+        Long userId = Long.parseLong(auth.getName());
+        User user = users.findById(userId).orElseThrow();
 
         String secret = mfa.generateSecret();
         String otpauth = mfa.buildOtpAuthUrl(user.getEmail(), secret);
         String qr = mfa.qrPngBase64(user.getEmail(), secret, 256);
 
-        user.setMfaSecret(secret);
-        users.save(user);
-
         List<String> rc = mfa.generateRecoveryCodesPlain();
+        
+        // Set both secret and recovery codes, then save once
+        user.setMfaSecret(secret);
         user.setMfaRecoveryHashes(mfa.hashRecoveryCodesForStorage(rc));
         users.save(user);
 
@@ -64,8 +64,9 @@ public class MfaController {
     public ResponseEntity<?> verifySetup(@RequestBody Map<String, String> body,
                                          org.springframework.security.core.Authentication auth) {
         String code = body.get("code");
-        String email = auth.getName();
-        User user = users.findByEmail(email).orElseThrow();
+        // auth.getName() returns the JWT subject, which is the user ID
+        Long userId = Long.parseLong(auth.getName());
+        User user = users.findById(userId).orElseThrow();
 
         String secret = user.getMfaSecret();
         if (secret == null || secret.isBlank()) {
@@ -107,12 +108,13 @@ public class MfaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> disable(@RequestBody Map<String, String> body,
                                      org.springframework.security.core.Authentication auth) {
-        String email = auth.getName();
+        // auth.getName() returns the JWT subject, which is the user ID
+        Long userId = Long.parseLong(auth.getName());
         String password = body.get("password");
         String otp = body.get("code");          // optional
         String recovery = body.get("recovery"); // optional
 
-        User user = users.findByEmail(email).orElseThrow();
+        User user = users.findById(userId).orElseThrow();
         if (user.getPasswordHash() == null || !bcrypt.matches(password, user.getPasswordHash())) {
             return ResponseEntity.status(401).body("Invalid password");
         }

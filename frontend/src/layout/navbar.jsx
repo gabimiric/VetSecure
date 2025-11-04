@@ -1,43 +1,46 @@
 // src/layout/navbar.jsx
-import React, { useEffect, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { AuthService } from "../services/AuthService";
+import React from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 import "./navbar.css";
 
 export default function Navbar() {
-  const [user, setUser] = useState(() => AuthService.getCurrentUser());
-  const location = useLocation();
+  const { user, isAuthenticated, signOut } = useAuth();
+  const navigate = useNavigate();
 
-  // keep navbar reactive to login/logout across tabs
-  useEffect(() => {
-    const onStorage = () => setUser(AuthService.getCurrentUser());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  // update when route changes (works for immediate state updates too)
-  useEffect(() => {
-    setUser(AuthService.getCurrentUser());
-  }, [location]);
+  const handleSignOut = () => {
+    signOut();
+    navigate("/login");
+  };
 
   return (
     <header className="header">
       <nav className="navbar" role="navigation" aria-label="Main navigation">
-        <Link to={user ? "/dashboard" : "/"} className="brand">
+        <Link to={isAuthenticated ? "/clinics" : "/"} className="brand">
           VetSecure
         </Link>
 
         <div className="nav-right">
           <div className="nav-links" role="menubar" aria-label="Primary">
-            {user ? (
-              <NavLink
-                to="/dashboard"
-                className={({ isActive }) =>
-                  "nav-link" + (isActive ? " active" : "")
-                }
-              >
-                Dashboard
-              </NavLink>
+            {isAuthenticated ? (
+              <>
+                <NavLink
+                  to="/clinics"
+                  className={({ isActive }) =>
+                    "nav-link" + (isActive ? " active" : "")
+                  }
+                >
+                  Clinics
+                </NavLink>
+                <NavLink
+                  to="/dashboard"
+                  className={({ isActive }) =>
+                    "nav-link" + (isActive ? " active" : "")
+                  }
+                >
+                  Dashboard
+                </NavLink>
+              </>
             ) : (
               <NavLink
                 to="/"
@@ -50,62 +53,97 @@ export default function Navbar() {
               </NavLink>
             )}
 
-            <NavLink
-              to="/register/petOwner"
-              className={({ isActive }) =>
-                "nav-link" + (isActive ? " active" : "")
-              }
-            >
-              Register Owner
-            </NavLink>
+            {isAuthenticated && (
+              <>
+                <NavLink
+                  to="/register/petOwner"
+                  className={({ isActive }) =>
+                    "nav-link" + (isActive ? " active" : "")
+                  }
+                >
+                  Register Owner
+                </NavLink>
 
-            <NavLink
-              to="/register/pet"
-              className={({ isActive }) =>
-                "nav-link" + (isActive ? " active" : "")
-              }
-            >
-              Register Pet
-            </NavLink>
+                <NavLink
+                  to="/register/pet"
+                  className={({ isActive }) =>
+                    "nav-link" + (isActive ? " active" : "")
+                  }
+                >
+                  Register Pet
+                </NavLink>
 
-            <NavLink
-              to="/register/clinic"
-              className={({ isActive }) =>
-                "nav-link" + (isActive ? " active" : "")
-              }
-            >
-              Register Clinic
-            </NavLink>
+                <NavLink
+                  to="/register/clinic"
+                  className={({ isActive }) =>
+                    "nav-link" + (isActive ? " active" : "")
+                  }
+                >
+                  Register Clinic
+                </NavLink>
 
-            <NavLink
-              to="/admin/requests"
-              className={({ isActive }) =>
-                "nav-link" + (isActive ? " active" : "")
-              }
-            >
-              See Requests
-            </NavLink>
+                <NavLink
+                  to="/admin/requests"
+                  className={({ isActive }) =>
+                    "nav-link" + (isActive ? " active" : "")
+                  }
+                >
+                  Admin Requests
+                </NavLink>
+              </>
+            )}
           </div>
 
-          {/* Profile button visible only if logged in */}
-          {user && (
-            <NavLink
-              to="/profile"
-              className={({ isActive }) =>
-                "profile-pill" + (isActive ? " active" : "")
-              }
-            >
-              <div className="profile-avatar" aria-hidden>
-                {String(user.username || user.email || "U")
-                  .split(" ")
-                  .map((s) => s[0])
-                  .slice(0, 2)
-                  .join("")
-                  .toUpperCase()}
-              </div>
-              <span>{user.username || user.email}</span>
-            </NavLink>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {/* Profile button visible only if logged in */}
+            {isAuthenticated && user && (
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  "profile-pill" + (isActive ? " active" : "")
+                }
+              >
+                <div className="profile-avatar" aria-hidden>
+                  {String(user.username || user.email || "U")
+                    .split(" ")
+                    .map((s) => s[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase()}
+                </div>
+                <span>{user.username || user.email}</span>
+              </NavLink>
+            )}
+
+            {/* Sign Out button */}
+            {isAuthenticated ? (
+              <button
+                onClick={handleSignOut}
+                className="button secondary"
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                Sign Out
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="button primary"
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 14,
+                  textDecoration: "none",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                Sign In
+              </Link>
+            )}
+          </div>
         </div>
       </nav>
     </header>

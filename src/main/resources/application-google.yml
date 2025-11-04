@@ -9,6 +9,11 @@ spring:
           # Google issuer (required)
           issuer-uri: https://accounts.google.com
 
+
+cors:
+  allowed-origins: "http://localhost:3000,http://127.0.0.1:3000"
+  allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+  allowed-headers: "*"
 app:
   security:
     google:

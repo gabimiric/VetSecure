@@ -1,7 +1,7 @@
 /* src/pages/auth/LoginPage.jsx */
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { AuthService } from "../../services/AuthService";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../auth/AuthProvider";
 import "../../styles/auth.css";
 
 export default function LoginPage() {
@@ -11,7 +11,73 @@ export default function LoginPage() {
     remember: false,
   });
   const [status, setStatus] = useState(null);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signInWithGoogle, isAuthenticated } = useAuth();
+  
+  // Guard refs to prevent infinite loops
+  const initializedRef = useRef(false);
+  const buttonRef = useRef(null);
+  const hasNavigatedRef = useRef(false);
+
+  // Redirect authenticated users away from login page (with guard to prevent loops)
+  useEffect(() => {
+    if (isAuthenticated && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
+      
+      // Check if there's a return path
+      const returnPath = location.state?.from?.pathname;
+      if (returnPath && returnPath !== "/login") {
+        console.log("[LoginPage] Redirecting to return path:", returnPath);
+        navigate(returnPath, { replace: true });
+        return;
+      }
+
+      // Default redirect to clinics list for new OAuth users
+      console.log("[LoginPage] Redirecting authenticated user to clinics list");
+      navigate("/clinics", { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
+
+  // Initialize Google Sign-In button (StrictMode-safe)
+  useEffect(() => {
+    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    if (!window.google || !clientId) return;
+
+    if (initializedRef.current) return; // prevent double init
+    initializedRef.current = true;
+
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async (response) => {
+        try {
+          const idToken = response?.credential;
+          if (!idToken) {
+            setError("No credential returned by Google.");
+            return;
+          }
+          await signInWithGoogle(idToken);
+          // Navigation handled by the first useEffect
+        } catch (e) {
+          console.error(e);
+          setError("Failed to sign in with Google.");
+        }
+      },
+      auto_select: false,
+      ux_mode: "popup",
+    });
+
+    if (buttonRef.current) {
+      window.google.accounts.id.renderButton(buttonRef.current, {
+        theme: "filled_blue",
+        size: "large",
+        shape: "pill",
+        text: "signin_with",
+        width: 320,
+      });
+    }
+  }, [signInWithGoogle]);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -22,6 +88,7 @@ export default function LoginPage() {
     e.preventDefault();
     setStatus("saving");
     try {
+      const { AuthService } = await import("../../services/AuthService");
       await AuthService.login({
         usernameOrEmail: form.usernameOrEmail,
         password: form.password,
@@ -38,7 +105,20 @@ export default function LoginPage() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={submit}>
-        <h2 className="auth-title">Sign in</h2>
+        <h2 className="auth-title">Sign in to VetSecure</h2>
+        
+        {/* Google Sign-In Button */}
+        <div style={{ marginBottom: 20 }}>
+          <div ref={buttonRef} style={{ display: "flex", justifyContent: "center" }} />
+          {error && <p className="error" style={{ marginTop: 8, fontSize: 14 }}>{error}</p>}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", margin: "16px 0" }}>
+          <hr style={{ flex: 1, opacity: 0.25 }} />
+          <span style={{ padding: "0 12px", color: "#777", fontSize: 14 }}>or</span>
+          <hr style={{ flex: 1, opacity: 0.25 }} />
+        </div>
+
         <label className="label">
           Username or Email
           <input
