@@ -4,79 +4,57 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.SecurityFilterChain;
-
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoders;
-import org.springframework.security.oauth2.jwt.JwtValidators;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-
-import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
 @Profile("google")
 public class GoogleSecurityConfig {
 
-    @Value("${google.oauth.client-id}")
+    @Value("${app.security.google.client-id}")
     private String googleClientId;
 
-    private static final String ISSUER = "https://accounts.google.com";
-
     @Bean
-    SecurityFilterChain api(HttpSecurity http,
-                            GoogleJwtGrantedAuthoritiesConverter authoritiesConverter) throws Exception {
+    SecurityFilterChain googleFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
+            // Stateless API
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Authorize requests (you can open health if you want unauthenticated health checks)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health").permitAll()
+                //.requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()
             )
+            // Enable JWT (resource server)
             .oauth2ResourceServer(oauth -> oauth
-                .jwt(jwt -> {
-                    jwt.decoder(jwtDecoder());
-                    jwt.jwtAuthenticationConverter(authoritiesConverter);
-                })
-            );
+                .jwt(Customizer.withDefaults())
+            )
+            // Basic hardening
+            .csrf(csrf -> csrf.disable())
+            .headers(h -> h.frameOptions(frame -> frame.deny()));
 
         return http.build();
     }
 
+    /**
+     * Use Google's issuer to create a NimbusJwtDecoder and add both issuer+audience validators.
+     */
     @Bean
-    NimbusJwtDecoder jwtDecoder() {
-        // Build from Google’s OIDC issuer (includes signature keys)
-        NimbusJwtDecoder decoder = (NimbusJwtDecoder) JwtDecoders.fromIssuerLocation(ISSUER);
+    JwtDecoder jwtDecoder() {
+        // Build from issuer; Google publishes JWKS under this issuer
+        String issuer = "https://accounts.google.com";
+        NimbusJwtDecoder decoder = JwtDecoders.fromIssuerLocation(issuer);
 
-        // 1) Validate issuer
-        var withIssuer = JwtValidators.createDefaultWithIssuer(ISSUER);
+        OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuer);
+        OAuth2TokenValidator<Jwt> withAudience = new GoogleAudienceValidator(googleClientId);
 
-        // 2) Validate audience = your Google Client ID
-        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
-            var aud = jwt.getAudience();
-            if (aud != null && aud.contains(googleClientId)) {
-                return OAuth2TokenValidatorResult.success();
-            }
-            return OAuth2TokenValidatorResult.failure(
-                new OAuth2Error("invalid_token", "Invalid audience (aud) for this API", null)
-            );
-        };
-
-        // Chain validators (issuer first, then audience)
-        decoder.setJwtValidator(jwt -> {
-            var r1 = withIssuer.validate(jwt);
-            if (r1.hasErrors()) return r1;
-            return audienceValidator.validate(jwt);
-        });
-
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, withAudience));
         return decoder;
     }
 }
