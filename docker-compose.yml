@@ -1,48 +1,62 @@
-version: "3.9"
-
-networks:
-  appnet: {}
-
-volumes:
-  mysqldata:
-
 services:
   mysql:
     image: mysql:8.0
-    container_name: vetsecure-mysql
+    container_name: vetsecure-my
     environment:
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: vetsecure
       MYSQL_USER: appuser
       MYSQL_PASSWORD: apppass
-      MYSQL_ROOT_PASSWORD: rootpass
-    command:
-      - --default-authentication-plugin=mysql_native_password
-      - --sql-mode=STRICT_TRANS_TABLES
     ports:
-      - "3307:3306" # expose for LOCAL DEV only (remove in prod)
+      - "3307:3306"
     volumes:
-      - mysqldata:/var/lib/mysql
-    networks: [appnet]
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-uappuser",
-          "-papppass",
-        ]
-      interval: 5s
-      retries: 20
+      - mysql_data:/var/lib/mysql
+
+  mongo:
+    image: mongo:6.0
+    container_name: vetsecure-mo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-expre
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    ports:
+      - "8082:8081"   # changed to avoid collision with Adminer
 
   adminer:
-    image: adminer:latest
-    container_name: vetsecure-adminer
-    ports:
-      - "8081:8080" # web DB console at http://localhost:8081
+    image: adminer
+    container_name: vetsecure-adr
     depends_on:
-      mysql:
-        condition: service_healthy
-    networks: [appnet]
+      - mysql
+    ports:
+      - "8083:8080"   # changed to avoid collision with Mongo Express
+
+  backend:
+    build: .
+    container_name: vetsecure-backend
+    depends_on:
+      - mysql
+      - mongo
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vetsecure?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+      SPRING_DATASOURCE_USERNAME: appuser
+      SPRING_DATASOURCE_PASSWORD: apppass
+      SPRING_PROFILES_ACTIVE: default
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: mvn spring-boot:run
+
+volumes:
+  mysql_data:
+  mongo_data:
