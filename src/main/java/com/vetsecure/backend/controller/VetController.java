@@ -9,6 +9,7 @@ import com.vetsecure.backend.repository.VetRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public class VetController {
 
     @PostMapping
     @Transactional
-    public Vet createVet(@RequestBody Vet vet) {
+    public Vet createVet(@Valid @RequestBody Vet vet) {
         // Load and attach existing User
         User existingUser = userRepository.findById(vet.getUser().getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -57,7 +58,7 @@ public class VetController {
 
     @PutMapping("/{id}")
     @Transactional
-    public Vet updateVet(@PathVariable Long id, @RequestBody Vet vetDetails) {
+    public Vet updateVet(@PathVariable Long id, @Valid @RequestBody Vet vetDetails) {
         Vet vet = vetRepository.findById(id).orElseThrow();
 
         vet.setFirstName(vetDetails.getFirstName());

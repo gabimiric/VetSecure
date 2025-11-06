@@ -1,8 +1,7 @@
 package com.vetsecure.backend.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import java.time.Instant;
 import java.util.List;
 
@@ -16,6 +15,7 @@ public class Clinic {
 
     @OneToOne
     @JoinColumn(name = "clinic_admin_id", nullable = false)
+    @NotNull(message = "Clinic admin is required")  // ADD THIS
     private User clinicAdmin; // The user who requested / manages the clinic
 
     @NotBlank
@@ -32,6 +32,7 @@ public class Clinic {
     @Size(max = 40)
     private String phone;
 
+    @Email(message = "Invalid email format")  // ADD THIS
     @Size(max = 120)
     private String email;
 

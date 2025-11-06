@@ -3,6 +3,7 @@ package com.vetsecure.backend.model;
 import jakarta.persistence.*;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.*;
 
 @Entity
 @Table(name = "pet_owners")
@@ -16,11 +17,16 @@ public class PetOwner {
     private User user;
 
     @Column(nullable = false)
+    @NotBlank(message = "First name is required")
+    @Size(min = 2, max = 50, message = "First name must be 2-50 characters")
     private String firstName;
 
     @Column(nullable = false)
+    @NotBlank(message = "Last name is required")
+    @Size(min = 2, max = 50, message = "Last name must be 2-50 characters")
     private String lastName;
 
+    @Pattern(regexp = "^(\\+?373\\d{8}|0\\d{8}|\\+?[1-9]\\d{1,14})$", message = "Invalid phone number format")
     private String phone;
 
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)

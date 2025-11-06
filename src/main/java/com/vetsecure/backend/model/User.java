@@ -1,8 +1,7 @@
 package com.vetsecure.backend.model;
 
 import jakarta.persistence.*;
-
-
+import jakarta.validation.constraints.*;
 
 @Entity
 @Table(name = "users")
@@ -11,12 +10,19 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Username is required")
+    @Size(min = 3, max = 50, message = "Username must be 3-50 characters")
     @Column(nullable = false, unique = true)
     private String username;
 
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    @Size(max = 190, message = "Email too long")
     @Column(nullable = false, unique = true)
     private String email;
 
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, message = "Password must be at least 8 characters")
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 

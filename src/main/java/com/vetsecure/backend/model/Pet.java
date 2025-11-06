@@ -2,6 +2,7 @@ package com.vetsecure.backend.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import jakarta.validation.constraints.*;
 
 @Entity
 @Table(name = "pet")
@@ -12,17 +13,28 @@ public class Pet {
 
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
+    @NotNull(message = "Owner is required")
     private PetOwner owner;
 
     @Column(nullable = false)
+    @NotBlank(message = "Pet name is required")
     private String name;
 
+    @NotBlank(message = "Pet species is required")
     private String species;
+
+    @Size(max = 100, message = "Breed name too long")
     private String breed;
+
+    @Pattern(regexp = "^(Male|Female|Unknown)$", message = "Invalid gender")
     private String gender;
+
+    @DecimalMin(value = "0.1", message = "Weight must be positive")
+    @DecimalMax(value = "500.0", message = "Weight seems unrealistic")
     private Double weight;
 
     @Column(name = "date_of_birth")
+    @Past(message = "Birth date must be in the past")
     private LocalDate dateOfBirth;
 
     // Getters and Setters

@@ -7,6 +7,7 @@ import com.vetsecure.backend.repository.ClinicRequestRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.constraints.Min;
 
 import java.time.Instant;
 import java.util.List;
@@ -33,7 +34,7 @@ public class AdminController {
     // Approve: mark request + create a clinic row
     @PostMapping("/clinic-requests/{id}/approve")
     @Transactional
-    public ResponseEntity<?> approve(@PathVariable Long id, @RequestParam(required = false) String decidedBy) {
+    public ResponseEntity<?> approve(@PathVariable @Min(1) Long id, @RequestParam(required = false) String decidedBy) {
         ClinicRequest req = requestRepo.findById(id).orElse(null);
         if (req == null) return ResponseEntity.notFound().build();
         if (req.getStatus() == ClinicRequest.Status.APPROVED)

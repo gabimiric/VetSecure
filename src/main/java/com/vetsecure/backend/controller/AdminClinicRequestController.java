@@ -3,6 +3,7 @@ package com.vetsecure.backend.controller;
 import com.vetsecure.backend.model.ClinicRequest;
 import com.vetsecure.backend.service.AdminClinicRequestService;
 import com.vetsecure.backend.web.dto.ClinicRequestDTO;
+import jakarta.validation.constraints.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -35,7 +36,7 @@ public class AdminClinicRequestController {
 
     /** GET /api/admin/clinic-requests/{id} */
     @GetMapping("/{id}")
-    public ResponseEntity<ClinicRequestDTO> get(@PathVariable Long id) {
+    public ResponseEntity<ClinicRequestDTO> get(@PathVariable @Min(1) Long id) {
         var req = service.get(id);
         return ResponseEntity.ok(ClinicRequestDTO.fromEntity(req));
     }

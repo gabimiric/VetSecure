@@ -1,6 +1,7 @@
 package com.vetsecure.backend.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
 @Entity
 @Table(name = "vets")
@@ -15,18 +16,23 @@ public class Vet {
 
     @ManyToOne
     @JoinColumn(name = "clinic_id", nullable = false)
+    @NotNull(message = "Clinic is required")
     private Clinic clinic;
 
-    @Column(nullable = false)
+    @NotBlank(message = "First name is required")
+    @Size(min = 2, max = 50)
     private String firstName;
 
-    @Column(nullable = false)
+    @NotBlank(message = "Last name is required")
+    @Size(min = 2, max = 50)
     private String lastName;
 
+    @Pattern(regexp = "^[A-Z0-9-]{5,20}$", message = "Invalid license format")
     private String license;
 
-    @Column(nullable = false)
-    private String role; // assistant or doctor
+    @NotBlank(message = "Role is required")
+    @Pattern(regexp = "^(clinic_admin|assistant|doctor)$", message = "Role must be 'vet_admin', 'assistant' or 'doctor'")
+    private String role;
 
     // Getters and Setters
     public Long getId() { return id; }

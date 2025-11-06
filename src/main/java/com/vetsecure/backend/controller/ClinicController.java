@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/clinics")
 public class ClinicController {
@@ -26,8 +28,8 @@ public class ClinicController {
     }
 
     @PostMapping
-    public Clinic createClinic(@RequestBody Clinic clinic) {
-        clinic.setStatus(Clinic.Status.PENDING); // default new requests to PENDING
+    public Clinic createClinic(@Valid @RequestBody Clinic clinic) {
+        clinic.setStatus(Clinic.Status.PENDING);
         return clinicRepository.save(clinic);
     }
 

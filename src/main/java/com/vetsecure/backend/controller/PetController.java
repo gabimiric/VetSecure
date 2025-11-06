@@ -5,6 +5,7 @@ import com.vetsecure.backend.repository.PetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,13 +31,13 @@ public class PetController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('SCOPE_pets:write')")
-    public Pet createPet(@RequestBody Pet pet) {
+    public Pet createPet(@Valid @RequestBody Pet pet) {
         return petRepository.save(pet);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_pets:write')")
-    public Pet updatePet(@PathVariable Long id, @RequestBody Pet petDetails) {
+    public Pet updatePet(@PathVariable Long id, @Valid @RequestBody Pet petDetails) {
         Pet pet = petRepository.findById(id).orElseThrow();
         pet.setName(petDetails.getName());
         pet.setSpecies(petDetails.getSpecies());

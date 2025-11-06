@@ -9,6 +9,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +37,7 @@ public class PetOwnerController {
 
     @PostMapping
     @Transactional
-    public PetOwner createPetOwner(@RequestBody PetOwner po) {
+    public PetOwner createPetOwner(@Valid @RequestBody PetOwner po) {
         // 1. Load the existing user from DB
         User existingUser = userRepository.findById(po.getUser().getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -48,7 +50,7 @@ public class PetOwnerController {
     }
 
     @PutMapping("/{id}")
-    public PetOwner updatePetOwner(@PathVariable Long id, @RequestBody PetOwner ownerDetails) {
+    public PetOwner updatePetOwner(@PathVariable Long id, @Valid @RequestBody PetOwner ownerDetails) {
         PetOwner owner = petOwnerRepository.findById(id).orElseThrow();
         owner.setFirstName(ownerDetails.getFirstName());
         owner.setLastName(ownerDetails.getLastName());
