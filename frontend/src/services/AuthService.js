@@ -1,8 +1,16 @@
 /* src/services/AuthService.js */
+
+const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8082";
+
+function withBase(path) {
+  if (path.startsWith("http")) return path;
+  return `${API_BASE}${path}`;
+}
+
 export const AuthService = {
   async getExistingRoles() {
     try {
-      const res = await fetch("/roles", {
+      const res = await fetch(withBase("/roles"), {
         credentials: "include",
       });
 
@@ -27,9 +35,9 @@ export const AuthService = {
 
     if (!existingRole) {
       throw new Error(
-        `Role '${role}' not found in database. Available roles: ${roles
-          .map((r) => r.name)
-          .join(", ")}`
+          `Role '${role}' not found in database. Available roles: ${roles
+              .map((r) => r.name)
+              .join(", ")}`
       );
     }
 
@@ -47,7 +55,7 @@ export const AuthService = {
     console.log("Sending user payload:", JSON.stringify(payload, null, 2));
 
     try {
-      const res = await fetch("/users", {
+      const res = await fetch(withBase("/users"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -60,16 +68,16 @@ export const AuthService = {
       console.log("Response status:", res.status);
 
       if (!res.ok) {
+        // Read text once and try to parse JSON from it
+        const text = await res.text();
         let errorMsg = `Registration failed: ${res.status} ${res.statusText}`;
-
         try {
-          const errorData = await res.json();
-          errorMsg = errorData.message || JSON.stringify(errorData);
+          const errorData = text ? JSON.parse(text) : null;
+          if (errorData) errorMsg = errorData.message || JSON.stringify(errorData);
+          else errorMsg = text || errorMsg;
         } catch (e) {
-          const text = await res.text();
           errorMsg = text || errorMsg;
         }
-
         throw new Error(errorMsg);
       }
 
@@ -93,7 +101,7 @@ export const AuthService = {
     console.log("Creating pet owner with:", payload);
 
     try {
-      const res = await fetch("/pet-owners", {
+      const res = await fetch(withBase("/pet-owners"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,16 +112,16 @@ export const AuthService = {
       });
 
       if (!res.ok) {
+        // Read text once and try to parse JSON from it
+        const text = await res.text();
         let errorMsg = `Pet owner creation failed: ${res.status}`;
-
         try {
-          const errorData = await res.json();
-          errorMsg = errorData.message || JSON.stringify(errorData);
+          const errorData = text ? JSON.parse(text) : null;
+          if (errorData) errorMsg = errorData.message || JSON.stringify(errorData);
+          else errorMsg = text || errorMsg;
         } catch (e) {
-          const text = await res.text();
           errorMsg = text || errorMsg;
         }
-
         throw new Error(errorMsg);
       }
 
@@ -127,14 +135,14 @@ export const AuthService = {
   },
 
   async register({
-    username,
-    email,
-    password,
-    role,
-    firstName,
-    lastName,
-    phone,
-  }) {
+                    username,
+                    email,
+                    password,
+                    role,
+                    firstName,
+                    lastName,
+                    phone,
+                  }) {
     // First, create the user with the existing role
     const user = await this.registerUser({
       username,
@@ -143,7 +151,16 @@ export const AuthService = {
       role,
     });
 
-    // If the role is PET_OWNER, create the pet owner record
+    // Attempt an immediate login so subsequent requests are authenticated
+    try {
+      // Call login to establish credentials (cookies / token)
+      await this.login({ usernameOrEmail: email, password, remember: false });
+    } catch (loginErr) {
+      console.warn("Automatic login after registration failed:", loginErr);
+      // Continue: even if automatic login fails, we still attempt to create pet owner
+    }
+
+    // If the role is PET_OWNER, create the pet owner record (authenticated)
     if (role === "PET_OWNER") {
       await this.createPetOwner({
         userId: user.id,
@@ -157,24 +174,55 @@ export const AuthService = {
   },
 
   async login({ usernameOrEmail, password, remember }) {
-    const res = await fetch("/auth/login", {
+    const res = await fetch(withBase("/api/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ usernameOrEmail, password }),
+      body: JSON.stringify({ email: usernameOrEmail, password }),
       credentials: "include",
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || `Login failed: ${res.status}`);
+      const text = await res.text();
+      try {
+        const body = text ? JSON.parse(text) : { error: text };
+        throw new Error(body.error || JSON.stringify(body));
+      } catch (e) {
+        // not JSON
+        throw new Error(text || `Login failed: ${res.status}`);
+      }
     }
 
     const data = await res.json();
-    const storage = remember ? localStorage : sessionStorage;
-    storage.setItem("access_token", data.token);
-    storage.setItem("current_user", JSON.stringify(data.user));
-    sessionStorage.setItem("current_user", JSON.stringify(data.user));
-    return data.user;
+
+    // Case 1: MFA required
+    if (data.mfaRequired && data.mfaToken) {
+      return { mfaRequired: true, mfaToken: data.mfaToken };
+    }
+
+    // Case 2: Legacy success without MFA (TokenResponse { token })
+    if (data.token) {
+      const storage = remember ? localStorage : sessionStorage;
+      storage.setItem("access_token", data.token);
+      // Best effort: keep API compatibility for existing views expecting a user
+      const fallbackUser = { username: usernameOrEmail, email: usernameOrEmail };
+      storage.setItem("current_user", JSON.stringify(fallbackUser));
+      sessionStorage.setItem("current_user", JSON.stringify(fallbackUser));
+      return { user: fallbackUser, token: data.token };
+    }
+
+    // Case: new JWT token response from /api/auth/login ({ token } or accessToken etc.)
+    if (data.accessToken) {
+      // store as before
+      localStorage.setItem('access_token', data.accessToken);
+      sessionStorage.setItem('access_token', data.accessToken);
+      const claims = (function(){ try { const p = data.accessToken.split('.')[1]; return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))) } catch { return null } })();
+      const fallbackUser = { username: claims?.email?.split('@')[0] || usernameOrEmail, email: claims?.email || usernameOrEmail };
+      sessionStorage.setItem('current_user', JSON.stringify(fallbackUser));
+      localStorage.setItem('current_user', JSON.stringify(fallbackUser));
+      return { user: fallbackUser, token: data.accessToken };
+    }
+
+    return data;
   },
 
   // Add this method to AuthService if roles need to be created
@@ -188,7 +236,7 @@ export const AuthService = {
         const defaultRoles = ["PET_OWNER", "CLINIC_ADMIN", "ASSISTANT", "VET"];
 
         for (const roleName of defaultRoles) {
-          await fetch("/roles", {
+          await fetch(withBase("/roles"), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -213,15 +261,15 @@ export const AuthService = {
 
   getToken() {
     return (
-      localStorage.getItem("access_token") ||
-      sessionStorage.getItem("access_token")
+        localStorage.getItem("access_token") ||
+        sessionStorage.getItem("access_token")
     );
   },
 
   getCurrentUser() {
     const raw =
-      sessionStorage.getItem("current_user") ||
-      localStorage.getItem("current_user");
+        sessionStorage.getItem("current_user") ||
+        localStorage.getItem("current_user");
     return raw ? JSON.parse(raw) : null;
   },
 

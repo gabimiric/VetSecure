@@ -51,7 +51,9 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/refresh",
                                 "/auth/mfa/verify-login",     // current MFA controller base
+                                "/auth/mfa/**",               // allow MFA setup/verify during dev
                                 "/api/auth/mfa/verify-login", // include if you later move under /api
+                                "/roles", "/users/**" ,         // registration/public bootstrap endpoints (allow subpaths)
                                 "/v3/api-docs/**", "/swagger-ui/**",
                                 "/public/**",
                                 "/actuator/health", "/actuator/info"
@@ -88,7 +90,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(List.of("http://localhost:3000"));
+        // Allow common dev frontend origins (CRA uses localhost:3000 by default)
+        cfg.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://localhost:8080"
+        ));
         cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization","Content-Type","X-Requested-With"));
         cfg.setAllowCredentials(true);

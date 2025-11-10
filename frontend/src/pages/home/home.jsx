@@ -8,7 +8,9 @@ export default function Home() {
   const nav = useNavigate();
 
   useEffect(() => {
-    if (AuthService.isAuthenticated()) {
+    const authed = AuthService.isAuthenticated();
+    console.log("[Home] mounted - isAuthenticated=", authed);
+    if (authed) {
       // optimistic redirect to dashboard if user appears logged in
       nav("/dashboard", { replace: true });
     }

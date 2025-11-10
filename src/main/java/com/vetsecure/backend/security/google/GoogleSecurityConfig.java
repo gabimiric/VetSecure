@@ -30,34 +30,37 @@ public class GoogleSecurityConfig {
 
     @Value("${app.security.google.client-id}")
     private String googleClientId;
-    
+
     @Value("${jwt.secret}")
     private String jwtSecret;
 
     @Bean
     SecurityFilterChain googleFilterChain(HttpSecurity http) throws Exception {
         http
-            // Stateless API
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // Enable CORS
-            .cors(Customizer.withDefaults())
-            // Authorize requests (you can open health if you want unauthenticated health checks)
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers(
-                    "/api/auth/google/login",    // OAuth gateway
-                    "/auth/mfa/verify-login",    // MFA verification (uses mfaToken)
-                    "/actuator/health"           // Health check
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
-            // Enable JWT (resource server)
-            .oauth2ResourceServer(oauth -> oauth
-                .jwt(Customizer.withDefaults())
-            )
-            // Basic hardening
-            .csrf(csrf -> csrf.disable())
-            .headers(h -> h.frameOptions(frame -> frame.deny()));
+                // Stateless API
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Enable CORS
+                .cors(Customizer.withDefaults())
+                // Authorize requests (you can open health if you want unauthenticated health checks)
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers(
+                                "/api/auth/google/login",    // OAuth gateway
+                                "/auth/mfa/verify-login",    // MFA verification (uses mfaToken)
+                                "/auth/mfa/**",              // include MFA setup and verify endpoints
+                                "/users/**",                 // allow user bootstrap and public reads during dev
+                                "/roles",                    // allow roles lookup
+                                "/actuator/health"           // Health check
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                // Enable JWT (resource server)
+                .oauth2ResourceServer(oauth -> oauth
+                        .jwt(Customizer.withDefaults())
+                )
+                // Basic hardening
+                .csrf(csrf -> csrf.disable())
+                .headers(h -> h.frameOptions(frame -> frame.deny()));
 
         return http.build();
     }
@@ -71,18 +74,20 @@ public class GoogleSecurityConfig {
     JwtDecoder jwtDecoder() {
         // Create decoder for backend tokens (HMAC-signed)
         SecretKey key = new SecretKeySpec(
-            jwtSecret.getBytes(StandardCharsets.UTF_8),
-            "HmacSHA256"
+                jwtSecret.getBytes(StandardCharsets.UTF_8),
+                "HmacSHA256"
         );
         NimbusJwtDecoder backendDecoder = NimbusJwtDecoder.withSecretKey(key).build();
-        
+
         // Create decoder for Google tokens
         String googleIssuer = "https://accounts.google.com";
-        NimbusJwtDecoder googleDecoder = JwtDecoders.fromIssuerLocation(googleIssuer);
+        JwtDecoder googleDecoder = JwtDecoders.fromIssuerLocation(googleIssuer);
         OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(googleIssuer);
         OAuth2TokenValidator<Jwt> withAudience = new GoogleAudienceValidator(googleClientId);
-        googleDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, withAudience));
-        
+        if (googleDecoder instanceof NimbusJwtDecoder nimbusJwtDecoder) {
+            nimbusJwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, withAudience));
+        }
+
         // Return a composite decoder that tries backend first, then Google
         return token -> {
             try {

@@ -1,7 +1,8 @@
 services:
+  # === MYSQL DATABASE ===
   mysql:
     image: mysql:8.0
-    container_name: vetsecure-my
+    container_name: vetsecure-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: vetsecure
@@ -12,51 +13,60 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
-  mongo:
-    image: mongo:6.0
-    container_name: vetsecure-mo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
-  mongo-express:
-    image: mongo-express
-    container_name: mongo-expre
-    environment:
-      ME_CONFIG_MONGODB_SERVER: mongo
-      ME_CONFIG_MONGODB_PORT: 27017
-      ME_CONFIG_BASICAUTH_USERNAME: admin
-      ME_CONFIG_BASICAUTH_PASSWORD: admin
-    ports:
-      - "8082:8081"   # changed to avoid collision with Adminer
-
+  # === ADMINER for MySQL ===
   adminer:
     image: adminer
-    container_name: vetsecure-adr
+    container_name: vetsecure-adminer
     depends_on:
       - mysql
     ports:
-      - "8083:8080"   # changed to avoid collision with Mongo Express
+      - "8083:8080"
 
+  # === SPRING BOOT BACKEND ===
   backend:
-    build: .
+    image: maven:3.9.9-eclipse-temurin-17
     container_name: vetsecure-backend
     depends_on:
       - mysql
-      - mongo
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: >
+      sh -c "mvn clean package -DskipTests &&
+             java -jar target/backend-0.0.1-SNAPSHOT.jar"
     ports:
-      - "8085:8085"
+      - "8082:8082"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vetsecure?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC&characterEncoding=utf8
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppass
       SPRING_PROFILES_ACTIVE: default
-    volumes:
-      - .:/app
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+
+  # === REACT FRONTEND ===
+  frontend:
+    image: node:24-alpine
+    container_name: vetsecure-frontend
     working_dir: /app
-    command: mvn spring-boot:run
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install && npm start"
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - REACT_APP_API_BASE=http://localhost:8082
+      # Enable reliable hot reload when running in Docker/Windows
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - WDS_SOCKET_PORT=0
+    depends_on:
+      - backend
+    stdin_open: true
+    tty: true
 
 volumes:
   mysql_data:
-  mongo_data:

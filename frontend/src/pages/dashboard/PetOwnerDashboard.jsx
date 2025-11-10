@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthService } from "../../services/AuthService";
+import { api } from "../../services/http";
 import "../../styles/petowner.css";
 
 export default function PetOwnerDashboard() {
@@ -26,12 +27,9 @@ export default function PetOwnerDashboard() {
       try {
         // load pet owner (may be missing for new users)
         try {
-          const petOwnerResponse = await fetch(`/pet-owners/${user.id}`, {
-            headers: { ...AuthService.authHeader() },
-          });
-          if (petOwnerResponse.ok) {
-            const petOwner = await petOwnerResponse.json();
-            setPetOwnerData(petOwner);
+          const res = await api.get(`/pet-owners/${user.id}`);
+          if (res.status === 200) {
+            setPetOwnerData(res.data);
           }
         } catch (petOwnerError) {
           console.warn("Could not load pet owner details:", petOwnerError);
@@ -49,29 +47,29 @@ export default function PetOwnerDashboard() {
 
     async function loadPets(userId) {
       try {
-        // try a direct owner endpoint; fallback to /pets then filter if necessary
-        let petsResponse = await fetch(`/pets/owner/${userId}`, {
-          headers: { ...AuthService.authHeader() },
-        });
+         // try direct owner endpoint
+         try {
+           const r = await api.get(`/pets/owner/${userId}`);
+           if (r.status === 200) {
+             setPets(r.data || []);
+             return;
+           }
+         } catch (e) {
+           // fallback to GET /pets and filter
+         }
 
-        if (!petsResponse.ok) {
-          // fallback: GET /pets and filter by owner.id
-          petsResponse = await fetch("/pets", {
-            headers: { ...AuthService.authHeader() },
-          });
-          if (petsResponse.ok) {
-            const all = await petsResponse.json();
-            const my = all.filter((p) => p.owner && p.owner.id === userId);
-            setPets(my);
-            return;
-          } else {
-            setPets([]);
-            return;
-          }
-        }
-
-        const myPets = await petsResponse.json();
-        setPets(myPets || []);
+         try {
+           const r2 = await api.get(`/pets`);
+           if (r2.status === 200) {
+             const all = r2.data || [];
+             const my = all.filter((p) => p.owner && p.owner.id === userId);
+             setPets(my);
+             return;
+           }
+         } catch (e) {
+           console.error("Error loading pets from /pets:", e);
+         }
+         setPets([]);
       } catch (err) {
         console.error("Error loading pets:", err);
         setPets([]);

@@ -32,8 +32,10 @@ public class User {
     @Column(name = "mfa_secret")
     private String mfaSecret; // e.g., "JBSWY3DPEHPK3PXP"
 
+    // Store potentially large list of bcrypt hashes for recovery codes.
+    // Use LONGTEXT explicitly to avoid 'Data too long for column' errors.
     @Lob
-    @Column(name = "mfa_recovery_hashes")
+    @Column(name = "mfa_recovery_hashes", columnDefinition = "LONGTEXT")
     private String mfaRecoveryHashes; // each line/CSV = BCrypt hash of a code
 
     @ManyToOne

@@ -15,15 +15,20 @@ function parseJwt(token) {
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8082";
   const [token, setToken] = useState(null);
   const [user, setUser]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaToken, setMfaToken] = useState(null);
 
-    // Load from storage on mount
+  // Load from storage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("vetsecure_id_token");
+    // Prefer unified OAuth token if present; otherwise fall back to legacy access_token
+    let saved = localStorage.getItem("vetsecure_id_token");
+    if (!saved) {
+      saved = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+    }
     if (saved) {
       setToken(saved);
       setAuthToken(saved);
@@ -32,10 +37,33 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  // Allow external callers (e.g. LoginPage) to complete login and populate context
+  const completeLogin = useCallback((accessToken, refreshToken) => {
+    if (!accessToken) return;
+    setToken(accessToken);
+    setAuthToken(accessToken);
+    localStorage.setItem("vetsecure_id_token", accessToken);
+    localStorage.setItem("access_token", accessToken);
+    if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
+
+    const claims = parseJwt(accessToken);
+    const userData = {
+      ...claims,
+      id: parseInt(claims.sub, 10),
+      email: claims.email,
+      username: claims.email?.split("@")[0] || "user",
+      role: claims.role || "PET_OWNER",
+    };
+    setUser(userData);
+    sessionStorage.setItem("current_user", JSON.stringify(userData));
+    localStorage.setItem("current_user", JSON.stringify(userData));
+    console.log("[AuthProvider] completeLogin - user set", userData);
+  }, []);
+
   const signInWithGoogle = useCallback(async (idToken) => {
     try {
       // Call the backend OAuth gateway to check MFA status
-      const response = await fetch("http://localhost:8082/api/auth/google/login", {
+      const response = await fetch(`${API_BASE}/api/auth/google/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,7 +128,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem("access_token", accessToken);
     localStorage.setItem("refresh_token", refreshToken);
     sessionStorage.setItem("access_token", accessToken);
-    
+
     const claims = parseJwt(accessToken);
     const userData = {
       ...claims,
@@ -112,7 +140,7 @@ export function AuthProvider({ children }) {
     setUser(userData);
     sessionStorage.setItem("current_user", JSON.stringify(userData));
     localStorage.setItem("current_user", JSON.stringify(userData));
-    
+
     // Close MFA dialog
     setMfaRequired(false);
     setMfaToken(null);
@@ -131,7 +159,7 @@ export function AuthProvider({ children }) {
     clearAuthToken();
     setMfaRequired(false);
     setMfaToken(null);
-    
+
     // Clear all auth storage (OAuth + traditional)
     localStorage.removeItem("vetsecure_id_token");
     localStorage.removeItem("access_token");
@@ -139,29 +167,36 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("refresh_token");
     sessionStorage.removeItem("access_token");
     sessionStorage.removeItem("current_user");
-    
+
     console.log("[Auth] User signed out");
   }, []);
 
+  const requestMfa = useCallback((token) => {
+    setMfaToken(token);
+    setMfaRequired(true);
+  }, []);
+
   const value = useMemo(
-    () => ({
-      loading,
-      token,
-      user,
-      isAuthenticated: !!token,
-      mfaRequired,
-      mfaToken,
-      signInWithGoogle,
-      handleMfaVerified,
-      cancelMfa,
-      signOut,
-      hasRole: (role) => {
-        // If you map roles from `user` or a /me endpoint, check them here.
-        // For now, allow if authenticated.
-        return !!token;
-      },
-    }),
-    [loading, token, user, mfaRequired, mfaToken, signInWithGoogle, handleMfaVerified, cancelMfa, signOut]
+      () => ({
+        loading,
+        token,
+        user,
+        isAuthenticated: !!token,
+        mfaRequired,
+        mfaToken,
+        signInWithGoogle,
+        handleMfaVerified,
+        cancelMfa,
+        requestMfa,
+        signOut,
+        completeLogin,
+        hasRole: (role) => {
+          // If you map roles from `user` or a /me endpoint, check them here.
+          // For now, allow if authenticated.
+          return !!token;
+        },
+      }),
+      [loading, token, user, mfaRequired, mfaToken, signInWithGoogle, handleMfaVerified, cancelMfa, requestMfa, signOut, completeLogin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

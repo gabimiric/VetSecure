@@ -1,5 +1,5 @@
 /* src/pages/auth/RegisterPage.jsx */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthService } from "../../services/AuthService";
 import "../../styles/auth.css";
@@ -19,6 +19,11 @@ export default function RegisterPage() {
   const [status, setStatus] = useState(null);
   const navigate = useNavigate();
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Debug: log when RegisterPage mounts to help diagnose unexpected redirects
+  useEffect(() => {
+    console.log("[RegisterPage] mounted");
+  }, []);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;

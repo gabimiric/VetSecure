@@ -39,6 +39,16 @@ public class OwnerController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /** Get owner for current authenticated user (by email in JWT) */
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> me(org.springframework.security.core.Authentication auth) {
+        String email = auth.getName();
+        return owners.findByUser_EmailIgnoreCase(email)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     /** Create a PetOwner for the current user – only if they don't already have one */
     @PostMapping("/me")
     @PreAuthorize("@authz.canCreateOwnerForSelf(authentication)")

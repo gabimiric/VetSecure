@@ -13,11 +13,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;                                      // ✅ add
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-// Removed @Profile("!google") so MFA works with both traditional and OAuth login
 @RestController
 @RequestMapping("/auth/mfa")
 public class MfaController {
+
+    private static final Logger logger = LoggerFactory.getLogger(MfaController.class);
 
     private final UserRepository users;
     private final MfaService mfa;
@@ -31,31 +35,71 @@ public class MfaController {
         this.jwtService = jwtService;
     }
 
+    // Helper: resolve userId from Authentication. Accept numeric subject or email username.
+    private Long resolveUserId(Authentication auth) {
+        if (auth == null) return null;
+        String name = auth.getName();
+        if (name == null) return null;
+        // try numeric first
+        try {
+            return Long.valueOf(name);
+        } catch (NumberFormatException ignored) {}
+
+        // try looking up by email/username
+        return users.findByEmail(name).map(User::getId)
+                .or(() -> users.findByUsername(name).map(User::getId))
+                .orElse(null);
+    }
+
     /** Step 1: generate secret + QR (user must be logged in) */
     @PostMapping("/setup")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> setup(org.springframework.security.core.Authentication auth) throws Exception {
-        // auth.getName() returns the JWT subject, which is the user ID
-        Long userId = Long.parseLong(auth.getName());
+        Long userId = resolveUserId(auth);
+        if (userId == null) {
+            logger.warn("MFA setup: could not resolve userId from Authentication: {}", auth);
+            return ResponseEntity.status(401).body(Map.of("error","Invalid authentication"));
+        }
         User user = users.findById(userId).orElseThrow();
+        logger.info("MFA setup requested for userId={}, email={}", userId, user.getEmail());
 
-        String secret = mfa.generateSecret();
-        String otpauth = mfa.buildOtpAuthUrl(user.getEmail(), secret);
-        String qr = mfa.qrPngBase64(user.getEmail(), secret, 256);
+        try {
+            String secret = mfa.generateSecret();
+            String otpauth = mfa.buildOtpAuthUrl(user.getEmail(), secret);
+            String qr = null;
+            try {
+                qr = mfa.qrPngBase64(user.getEmail(), secret, 256);
+            } catch (Exception qrEx) {
+                // Don't fail setup if generating PNG fails (headless environments, ZXing issues).
+                logger.warn("Could not generate QR PNG for userId={}: {}", userId, qrEx.getMessage());
+                qr = null; // QR omitted; client can use the otpauth URI or secret
+            }
 
-        List<String> rc = mfa.generateRecoveryCodesPlain();
-        
-        // Set both secret and recovery codes, then save once
-        user.setMfaSecret(secret);
-        user.setMfaRecoveryHashes(mfa.hashRecoveryCodesForStorage(rc));
-        users.save(user);
+            List<String> rc = mfa.generateRecoveryCodesPlain();
 
-        return ResponseEntity.ok(Map.of(
-                "secret", secret,
-                "otpauth", otpauth,
-                "qr", qr,
-                "recoveryCodes", rc
-        ));
+            // Set both secret and recovery codes, then save once
+            user.setMfaSecret(secret);
+            user.setMfaRecoveryHashes(mfa.hashRecoveryCodesForStorage(rc));
+            users.save(user);
+
+            logger.info("MFA setup completed for userId={}", userId);
+
+            return ResponseEntity.ok(Map.of(
+                    "secret", secret,
+                    "otpauth", otpauth,
+                    "qr", qr,
+                    "recoveryCodes", rc
+            ));
+        } catch (Exception e) {
+            logger.error("MFA setup failed for userId={}: {}", userId, e.getMessage(), e);
+            // Return the exception message in the response for easier debugging in dev.
+            // This is intentionally verbose for local debugging — remove or sanitize in production.
+            String detail = e.getMessage() != null ? e.getMessage() : e.toString();
+            return ResponseEntity.status(400).body(Map.of(
+                    "error", "Failed to generate MFA setup data",
+                    "detail", detail
+            ));
+        }
     }
 
     /** Step 2: user scans QR and submits a code to activate */
@@ -64,8 +108,8 @@ public class MfaController {
     public ResponseEntity<?> verifySetup(@RequestBody Map<String, String> body,
                                          org.springframework.security.core.Authentication auth) {
         String code = body.get("code");
-        // auth.getName() returns the JWT subject, which is the user ID
-        Long userId = Long.parseLong(auth.getName());
+        Long userId = resolveUserId(auth);
+        if (userId == null) return ResponseEntity.status(401).body(Map.of("error","Invalid authentication"));
         User user = users.findById(userId).orElseThrow();
 
         String secret = user.getMfaSecret();
@@ -108,8 +152,8 @@ public class MfaController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> disable(@RequestBody Map<String, String> body,
                                      org.springframework.security.core.Authentication auth) {
-        // auth.getName() returns the JWT subject, which is the user ID
-        Long userId = Long.parseLong(auth.getName());
+        Long userId = resolveUserId(auth);
+        if (userId == null) return ResponseEntity.status(401).body(Map.of("error","Invalid authentication"));
         String password = body.get("password");
         String otp = body.get("code");          // optional
         String recovery = body.get("recovery"); // optional

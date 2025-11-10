@@ -1,8 +1,11 @@
 package com.vetsecure.backend.controller;
 
 import com.vetsecure.backend.model.Pet;
+import com.vetsecure.backend.model.PetOwner;
+import com.vetsecure.backend.repository.PetOwnerRepository;
 import com.vetsecure.backend.repository.PetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
@@ -17,6 +20,9 @@ public class PetController {
     @Autowired
     private PetRepository petRepository;
 
+    @Autowired
+    private PetOwnerRepository ownerRepository;
+
     @GetMapping
     @PreAuthorize("hasAuthority('SCOPE_pets:read')")
     public List<Pet> getAllPets() {
@@ -30,8 +36,17 @@ public class PetController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('SCOPE_pets:write')")
-    public Pet createPet(@Valid @RequestBody Pet pet) {
+    @PreAuthorize("isAuthenticated()")
+    public Pet createPet(@RequestBody Pet pet, Authentication auth) {
+        // If caller is a PET_OWNER and owner is missing or not set correctly,
+        // resolve the PetOwner by the authenticated user's email.
+        if (pet.getOwner() == null || pet.getOwner().getId() == null) {
+            if (auth != null && auth.isAuthenticated()) {
+                String email = auth.getName();
+                Optional<PetOwner> po = ownerRepository.findByUser_EmailIgnoreCase(email);
+                po.ifPresent(pet::setOwner);
+            }
+        }
         return petRepository.save(pet);
     }
 

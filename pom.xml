@@ -92,6 +92,18 @@
   <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
 
+        <!-- Spring Security OAuth2 Resource Server (for JWT, JwtDecoder, NimbusJwtDecoder, etc.) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- Optional: OAuth2 client if you handle Google Sign-In -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>dev.samstevens.totp</groupId>
             <artifactId>totp</artifactId>
