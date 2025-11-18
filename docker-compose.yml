@@ -41,10 +41,10 @@ services:
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppass
       SPRING_PROFILES_ACTIVE: default
-      SPRING_FLYWAY_ENABLED: "true"
-      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
-      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "true"
-      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_ENABLED: "false"
+#      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+#      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "true"
+#      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
 
   # === REACT FRONTEND ===
   frontend:
