@@ -53,7 +53,7 @@ public class SecurityConfig {
                                 "/auth/mfa/verify-login",     // current MFA controller base
                                 "/auth/mfa/**",               // allow MFA setup/verify during dev
                                 "/api/auth/mfa/verify-login", // include if you later move under /api
-                                "/roles", "/users/**" ,         // registration/public bootstrap endpoints (allow subpaths)
+                                "/roles", "/users", "/pet-owners", "vets",         // registration/public bootstrap endpoints (allow subpaths)
                                 "/v3/api-docs/**", "/swagger-ui/**",
                                 "/public/**",
                                 "/actuator/health", "/actuator/info"
