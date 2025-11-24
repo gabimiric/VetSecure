@@ -1,16 +1,3 @@
-/* Animal / Pet Details — clean, modern styles */
-
-:root {
-  --bg: #f6f8fb;
-  --card: #ffffff;
-  --muted: #6b7280;
-  --text: #0f1724;
-  --primaryA: #5b8cff;
-  --primaryB: #3b5bdb;
-  --danger: #ff3747;
-  --radius: 12px;
-  --shadow-sm: 0 8px 20px rgba(16, 24, 40, 0.06);
-}
 
 /* container */
 .ad-container {
@@ -180,7 +167,6 @@
 .label {
   color: var(--muted);
   font-size: 13px;
-  width: 110px;
 }
 .value {
   font-weight: 700;

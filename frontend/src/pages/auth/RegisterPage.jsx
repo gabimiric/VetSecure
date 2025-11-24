@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthService } from "../../services/AuthService";
+import { useAuth } from "../../auth/AuthProvider"; // added import
 import "../../styles/auth.css";
 
 export default function RegisterPage() {
@@ -19,6 +20,7 @@ export default function RegisterPage() {
   const [status, setStatus] = useState(null);
   const navigate = useNavigate();
   const [errorMsg, setErrorMsg] = useState("");
+  const auth = useAuth(); // new
 
   // Debug: log when RegisterPage mounts to help diagnose unexpected redirects
   useEffect(() => {
@@ -34,29 +36,12 @@ export default function RegisterPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-
-    if (form.password !== form.confirm) {
-      setStatus("mismatch");
-      return;
-    }
-
-    if (form.password.length < 6) {
-      setStatus("error");
-      setErrorMsg("Password must be at least 6 characters long");
-      return;
-    }
-
-    if (isPetOwner && (!form.firstName || !form.lastName)) {
-      setStatus("error");
-      setErrorMsg("First name and last name are required for pet owners");
-      return;
-    }
-
     setStatus("saving");
+    setErrorMsg("");
 
     try {
-      // Use the register method instead of simpleRegister
-      const user = await AuthService.register({
+      // create user + pet owner record (AuthService.register may create owner)
+      await AuthService.register({
         username: form.username,
         email: form.email,
         password: form.password,
@@ -66,34 +51,25 @@ export default function RegisterPage() {
         phone: form.phone,
       });
 
-      console.log("Registration response:", user);
-
-      // Store user data and login
-      const storage = form.remember ? localStorage : sessionStorage;
-      storage.setItem("current_user", JSON.stringify(user));
-      storage.setItem("access_token", "devtoken");
-
-      // In your AuthService register method, update the redirect logic:
-      setStatus("success");
-
-      // Redirect based on role
-      setTimeout(() => {
-        if (form.role === "PET_OWNER") {
-          navigate("/dashboard"); // This will go to DashboardRouter which will show PetOwnerDashboard
-        } else if (form.role === "CLINIC_ADMIN") {
-          navigate("/dashboard");
-        } else if (form.role === "VET") {
-          navigate("/dashboard");
-        } else if (form.role === "ASSISTANT") {
-          navigate("/dashboard");
-        } else {
-          navigate("/dashboard");
-        }
-      }, 1000);
+      // Attempt an immediate login so subsequent requests are authenticated
+      try {
+        await auth.login(
+          { usernameOrEmail: form.email, password: form.password },
+          form.remember
+        );
+        // only navigate after successful login
+        navigate("/dashboard", { replace: true });
+      } catch (loginErr) {
+        // login failed — send user to login page and show message
+        console.warn("Auto-login after register failed:", loginErr);
+        setStatus("error");
+        setErrorMsg("Registered but automatic login failed. Please sign in.");
+        navigate("/login", { replace: true });
+      }
     } catch (err) {
-      console.error("Registration error:", err);
+      console.error("Registration failed", err);
       setStatus("error");
-      setErrorMsg(err.message || "Registration failed. Please try again.");
+      setErrorMsg(err?.message || "Registration failed");
     }
   };
 

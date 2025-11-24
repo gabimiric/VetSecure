@@ -16,16 +16,21 @@
   --input-border: #e6e9ee;
 }
 
+body {
+  background: linear-gradient(180deg, var(--bg), #ffffff00);
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+}
+
 /* page background / centering */
 .auth-screen {
   min-height: calc(100vh - 92px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px 16px;
-  background: linear-gradient(180deg, var(--bg), #ffffff00);
-  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
+  padding: 0px 16px;
+  
   color: var(--text);
 }
 
@@ -36,7 +41,7 @@
   background: var(--card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 28px 28px;
+  padding: 20px 28px;
   border: 1px solid rgba(18, 23, 31, 0.03);
 }
 
@@ -50,6 +55,7 @@
 
 /* labels and text fields */
 .label {
+  width: 100%;
   display: block;
   margin-bottom: 10px;
   color: var(--muted);
@@ -60,6 +66,7 @@
 .tf,
 .tf:focus {
   width: 100%;
+  box-sizing: border-box;
   display: block;
   margin-top: 8px;
   padding: 12px 14px;

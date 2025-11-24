@@ -25,18 +25,38 @@ export default function PetOwnerDashboard() {
       setError(null);
 
       try {
-        // load pet owner (may be missing for new users)
+        // Preferred: fetch authenticated owner's profile (includes phone + pets)
+        let owner = null;
         try {
-          const res = await api.get(`/pet-owners/${user.id}`);
-          if (res.status === 200) {
-            setPetOwnerData(res.data);
-          }
-        } catch (petOwnerError) {
-          console.warn("Could not load pet owner details:", petOwnerError);
+          const r = await api.get("/api/owners/me");
+          if (r.status === 200) owner = r.data;
+        } catch (e) {
+          console.info("/api/owners/me not available or unauthorized:", e?.response?.status);
         }
 
-        // load pets for this owner (backend provides endpoint)
-        await loadPets(user.id);
+        // fallback to pet-owners public endpoint only if needed
+        if (!owner) {
+          try {
+            const r2 = await api.get(`/pet-owners/${user.id}`);
+            if (r2.status === 200) owner = r2.data;
+          } catch (e2) {
+            console.info(`/pet-owners/${user.id} failed:`, e2?.response?.status);
+          }
+        }
+
+        if (owner) {
+          setPetOwnerData(owner);
+          // use owner.pets if present (avoid calling protected /pets endpoint)
+          if (Array.isArray(owner.pets)) {
+            setPets(owner.pets);
+          } else {
+            // fallback: try to load pets by filtering /pets (may require scope)
+            await loadPets(user.id);
+          }
+        } else {
+          setPetOwnerData(null);
+          await loadPets(user.id);
+        }
       } catch (err) {
         console.error("Error loading dashboard data:", err);
         setError("Failed to load dashboard data");
@@ -47,29 +67,31 @@ export default function PetOwnerDashboard() {
 
     async function loadPets(userId) {
       try {
-         // try direct owner endpoint
-         try {
-           const r = await api.get(`/pets/owner/${userId}`);
-           if (r.status === 200) {
-             setPets(r.data || []);
-             return;
-           }
-         } catch (e) {
-           // fallback to GET /pets and filter
-         }
+        // Avoid calling protected /pets unless authenticated with proper scope.
+        // First try owner-scoped endpoints, then attempt /pets only if necessary.
+        const tries = [
+          `/pets/owner/${userId}`,
+          `/api/pets/owner/${userId}`,
+          `/pets`,
+          `/api/pets`,
+        ];
 
-         try {
-           const r2 = await api.get(`/pets`);
-           if (r2.status === 200) {
-             const all = r2.data || [];
-             const my = all.filter((p) => p.owner && p.owner.id === userId);
-             setPets(my);
-             return;
-           }
-         } catch (e) {
-           console.error("Error loading pets from /pets:", e);
-         }
-         setPets([]);
+        for (const path of tries) {
+          try {
+            const r = await api.get(path);
+            if (r && (r.status === 200 || r.status === 204)) {
+              const data = Array.isArray(r.data) ? r.data : r.data?.items || [];
+              const filtered = Array.isArray(data)
+                ? data.filter((p) => p.owner && p.owner.id === userId)
+                : [];
+              setPets(filtered || []);
+              return;
+            }
+          } catch (e) {
+            console.info(`Attempt to load pets from ${path} failed:`, e?.response?.status || e.message);
+          }
+        }
+        setPets([]);
       } catch (err) {
         console.error("Error loading pets:", err);
         setPets([]);

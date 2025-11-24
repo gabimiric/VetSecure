@@ -3,21 +3,31 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthService } from "../../services/AuthService";
 import { api } from "../../services/http";
+import { useAuth } from "../../auth/AuthProvider";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { logout: logoutFromContext } = useAuth();
   const stored = AuthService.getCurrentUser();
   const [user, setUser] = useState(stored || null);
   const [petOwner, setPetOwner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null);
-  const [ownerDraft, setOwnerDraft] = useState({ firstName: "", lastName: "", phone: "" });
+  const [ownerDraft, setOwnerDraft] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+  });
 
   // MFA state
   const [mfaSetupData, setMfaSetupData] = useState(null);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaStatus, setMfaStatus] = useState(null);
-  const [disableMfa, setDisableMfa] = useState({ password: "", code: "", recovery: "" });
+  const [disableMfa, setDisableMfa] = useState({
+    password: "",
+    code: "",
+    recovery: "",
+  });
   const [disableStatus, setDisableStatus] = useState(null);
 
   useEffect(() => {
@@ -45,7 +55,10 @@ export default function Profile() {
               phone: r.data?.phone || "",
             });
           } catch (e) {
-            console.warn("Fallback to id-based and legacy endpoints due to /api/owners/me failure:", e?.response?.status);
+            console.warn(
+              "Fallback to id-based and legacy endpoints due to /api/owners/me failure:",
+              e?.response?.status
+            );
             // If we get 403 from both, the user likely doesn't have a PetOwner profile yet
             if (e?.response?.status === 403 || e?.response?.status === 404) {
               try {
@@ -57,7 +70,10 @@ export default function Profile() {
                   phone: rId.data?.phone || "",
                 });
               } catch (eId) {
-                console.warn("Fallback to legacy /pet-owners after id attempt:", eId?.response?.status);
+                console.warn(
+                  "Fallback to legacy /pet-owners after id attempt:",
+                  eId?.response?.status
+                );
                 try {
                   const r2 = await api.get(`/pet-owners/${u.id}`);
                   setPetOwner(r2.data);
@@ -67,8 +83,13 @@ export default function Profile() {
                     phone: r2.data?.phone || "",
                   });
                 } catch (e2) {
-                  if (e2?.response?.status === 403 || e2?.response?.status === 404) {
-                    console.info("No PetOwner profile found or not authorized yet; allow creating one from UI.");
+                  if (
+                    e2?.response?.status === 403 ||
+                    e2?.response?.status === 404
+                  ) {
+                    console.info(
+                      "No PetOwner profile found or not authorized yet; allow creating one from UI."
+                    );
                     setPetOwner(null);
                   } else {
                     throw e2;
@@ -84,7 +105,9 @@ export default function Profile() {
         }
       } catch (err) {
         console.error("Error: ", err);
-        alert("Failed to fetch user: " + (err.response?.data || err.message || err));
+        alert(
+          "Failed to fetch user: " + (err.response?.data || err.message || err)
+        );
       } finally {
         setLoading(false);
       }
@@ -113,7 +136,9 @@ export default function Profile() {
       const payload = {
         username: user.username,
         email: user.email,
-        role: user.role ? { id: user.role.id, name: user.role.name } : undefined
+        role: user.role
+          ? { id: user.role.id, name: user.role.name }
+          : undefined,
       };
       const res = await api.put(`/users/${user.id}`, payload);
 
@@ -132,25 +157,25 @@ export default function Profile() {
       const updated = res.data;
       // AuthService stores current_user in session/local storage; update it
       const storage = localStorage.getItem("access_token")
-          ? localStorage
-          : sessionStorage;
+        ? localStorage
+        : sessionStorage;
       storage.setItem(
-          "current_user",
-          JSON.stringify({
-            ...stored,
-            username: updated.username,
-            email: updated.email,
-            role: updated.role,
-          })
+        "current_user",
+        JSON.stringify({
+          ...stored,
+          username: updated.username,
+          email: updated.email,
+          role: updated.role,
+        })
       );
       sessionStorage.setItem(
-          "current_user",
-          JSON.stringify({
-            ...stored,
-            username: updated.username,
-            email: updated.email,
-            role: updated.role,
-          })
+        "current_user",
+        JSON.stringify({
+          ...stored,
+          username: updated.username,
+          email: updated.email,
+          role: updated.role,
+        })
       );
 
       setStatus("saved");
@@ -161,20 +186,18 @@ export default function Profile() {
     }
   };
 
-  const logout = () => {
-    AuthService.logout();
-    navigate("/", { replace: true });
+  const handleLogout = () => {
+    logoutFromContext();
   };
 
   const deleteAccount = async () => {
     const ok = window.confirm(
-        "Delete your account permanently? This cannot be undone."
+      "Delete your account permanently? This cannot be undone."
     );
     if (!ok) return;
     try {
       await api.delete(`/users/${user.id}`);
-      AuthService.logout();
-      navigate("/", { replace: true });
+      logoutFromContext();
     } catch (err) {
       console.error(err);
       alert("Failed to delete account: " + err.message);
@@ -185,27 +208,48 @@ export default function Profile() {
   const startMfaSetup = async () => {
     setMfaStatus("loading");
     try {
-      console.log('[Profile] startMfaSetup - authHeader:', AuthService.authHeader());
-      console.log('[Profile] startMfaSetup - token:', AuthService.getToken());
+      console.log(
+        "[Profile] startMfaSetup - authHeader:",
+        AuthService.authHeader()
+      );
+      console.log("[Profile] startMfaSetup - token:", AuthService.getToken());
       // include explicit auth header to be defensive in case defaults weren't applied
-      const res = await api.post("/auth/mfa/setup", null, { headers: { ...AuthService.authHeader(), "Content-Type": "application/json" } });
+      const res = await api.post("/auth/mfa/setup", null, {
+        headers: {
+          ...AuthService.authHeader(),
+          "Content-Type": "application/json",
+        },
+      });
       setMfaSetupData(res.data);
       setMfaStatus(null);
     } catch (err) {
       console.error("MFA setup error:", err);
       console.error("Error response:", err.response);
       try {
-        console.error('MFA setup response data (stringified):', JSON.stringify(err.response?.data));
-      } catch (e) { /* ignore stringify errors */ }
+        console.error(
+          "MFA setup response data (stringified):",
+          JSON.stringify(err.response?.data)
+        );
+      } catch (e) {
+        /* ignore stringify errors */
+      }
       setMfaStatus("error");
       // Extract readable message if possible
       let errorMessage = err.message;
       if (err?.response?.data) {
-        if (typeof err.response.data === "string") errorMessage = err.response.data;
-        else if (err.response.data.error) errorMessage = err.response.data.error;
+        if (typeof err.response.data === "string")
+          errorMessage = err.response.data;
+        else if (err.response.data.error)
+          errorMessage = err.response.data.error;
         else errorMessage = JSON.stringify(err.response.data);
       }
-      alert("Failed to start MFA setup: " + errorMessage + (err?.response?.data?.detail ? '\n\nDetail: ' + err.response.data.detail : ''));
+      alert(
+        "Failed to start MFA setup: " +
+          errorMessage +
+          (err?.response?.data?.detail
+            ? "\n\nDetail: " + err.response.data.detail
+            : "")
+      );
     }
   };
 
@@ -281,401 +325,487 @@ export default function Profile() {
           console.error("Fetch after 403 failed:", fetchErr);
         }
       }
-      alert("Failed to create owner profile: " + (err.response?.data || err.message));
+      alert(
+        "Failed to create owner profile: " + (err.response?.data || err.message)
+      );
     }
   };
 
   return (
-      <div style={{ maxWidth: 880, margin: "24px auto", padding: "0 16px" }}>
-        <h2>Profile</h2>
-        {loading ? (
-            <p>Loading…</p>
-        ) : (
-            <form
-                noValidate
-                onSubmit={save}
-                style={{
-                  background: "white",
-                  padding: 16,
-                  borderRadius: 12,
-                  border: "1px solid #e5e7eb",
-                }}
+    <div style={{ maxWidth: 880, margin: "24px auto", padding: "0 16px" }}>
+      <h2>Profile</h2>
+      {loading ? (
+        <p>Loading…</p>
+      ) : (
+        <form
+          noValidate
+          onSubmit={save}
+          style={{
+            background: "white",
+            padding: 16,
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <div style={{ marginBottom: 12 }}>
+            <label
+              style={{ display: "block", marginBottom: 6, color: "#374151" }}
             >
-              <div style={{ marginBottom: 12 }}>
-                <label
-                    style={{ display: "block", marginBottom: 6, color: "#374151" }}
-                >
-                  Username
-                </label>
-                <input
-                    name="username"
-                    value={user.username || ""}
-                    onChange={onChangeUser}
-                    className="tf"
-                    style={{ width: "100%", padding: 10, borderRadius: 8 }}
-                />
-              </div>
+              Username
+            </label>
+            <input
+              name="username"
+              value={user.username || ""}
+              onChange={onChangeUser}
+              className="tf"
+              style={{ width: "100%", padding: 10, borderRadius: 8 }}
+            />
+          </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <label
-                    style={{ display: "block", marginBottom: 6, color: "#374151" }}
-                >
-                  Email
-                </label>
-                <input
-                    name="email"
-                    value={user.email || ""}
-                    onChange={onChangeUser}
-                    className="tf"
-                    style={{ width: "100%", padding: 10, borderRadius: 8 }}
-                />
-              </div>
+          <div style={{ marginBottom: 12 }}>
+            <label
+              style={{ display: "block", marginBottom: 6, color: "#374151" }}
+            >
+              Email
+            </label>
+            <input
+              name="email"
+              value={user.email || ""}
+              onChange={onChangeUser}
+              className="tf"
+              style={{ width: "100%", padding: 10, borderRadius: 8 }}
+            />
+          </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <label
-                    style={{ display: "block", marginBottom: 6, color: "#374151" }}
+          <div style={{ marginBottom: 12 }}>
+            <label
+              style={{ display: "block", marginBottom: 6, color: "#374151" }}
+            >
+              Role
+            </label>
+            <div
+              style={{ padding: 10, background: "#f9fafb", borderRadius: 8 }}
+            >
+              {user.role?.name || "—"}
+            </div>
+          </div>
+
+          {/* MFA Setup Section */}
+          <div
+            style={{
+              marginTop: 24,
+              marginBottom: 24,
+              padding: 16,
+              background: "#f0fdf4",
+              borderRadius: 12,
+              border: "1px solid #86efac",
+            }}
+          >
+            <h4 style={{ marginTop: 0 }}>Two-Factor Authentication (MFA)</h4>
+            <p style={{ fontSize: 14, color: "#666", marginBottom: 12 }}>
+              Protect your account with an extra layer of security.
+            </p>
+
+            {!mfaSetupData ? (
+              <div>
+                {user.mfaEnabled ? (
+                  <div style={{ marginBottom: 12 }}>
+                    <p
+                      style={{
+                        color: "#065f46",
+                        fontWeight: 600,
+                        marginBottom: 8,
+                      }}
+                    >
+                      MFA is currently ENABLED on your account.
+                    </p>
+                    <details>
+                      <summary style={{ cursor: "pointer", marginBottom: 8 }}>
+                        Disable MFA
+                      </summary>
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: 8,
+                          maxWidth: 420,
+                          marginTop: 8,
+                        }}
+                      >
+                        <input
+                          type="password"
+                          placeholder="Confirm password (required)"
+                          value={disableMfa.password}
+                          onChange={(e) =>
+                            setDisableMfa((s) => ({
+                              ...s,
+                              password: e.target.value,
+                            }))
+                          }
+                          required
+                          style={{
+                            padding: 10,
+                            border: "2px solid #ddd",
+                            borderRadius: 8,
+                          }}
+                        />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength="6"
+                          placeholder="6-digit code (optional)"
+                          value={disableMfa.code}
+                          onChange={(e) =>
+                            setDisableMfa((s) => ({
+                              ...s,
+                              code: e.target.value.replace(/\\D/g, ""),
+                            }))
+                          }
+                          style={{
+                            padding: 10,
+                            border: "2px solid #ddd",
+                            borderRadius: 8,
+                          }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Recovery code (optional alternative)"
+                          value={disableMfa.recovery}
+                          onChange={(e) =>
+                            setDisableMfa((s) => ({
+                              ...s,
+                              recovery: e.target.value,
+                            }))
+                          }
+                          style={{
+                            padding: 10,
+                            border: "2px solid #ddd",
+                            borderRadius: 8,
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={submitDisableMfa}
+                          disabled={
+                            !disableMfa.password || disableStatus === "saving"
+                          }
+                          style={{
+                            padding: "10px 16px",
+                            background: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            borderRadius: 8,
+                          }}
+                        >
+                          {disableStatus === "saving"
+                            ? "Disabling…"
+                            : "Disable MFA"}
+                        </button>
+                      </div>
+                    </details>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={startMfaSetup}
+                    disabled={mfaStatus === "loading"}
+                    style={{
+                      padding: "10px 16px",
+                      background: "#10b981",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      cursor: mfaStatus === "loading" ? "wait" : "pointer",
+                      fontSize: 14,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {mfaStatus === "loading"
+                      ? "Setting up..."
+                      : "🔐 Enable MFA"}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontWeight: 600, marginBottom: 8 }}>
+                  Scan this QR code with Google Authenticator:
+                </p>
+                {mfaSetupData.qr ? (
+                  <img
+                    src={mfaSetupData.qr}
+                    alt="MFA QR Code"
+                    style={{
+                      maxWidth: 256,
+                      border: "2px solid #ddd",
+                      borderRadius: 8,
+                      marginBottom: 12,
+                    }}
+                  />
+                ) : (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ marginBottom: 8 }}>
+                      <strong>QR image unavailable.</strong>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      Use this secret in your authenticator app:
+                    </div>
+                    <div
+                      style={{
+                        background: "#fff",
+                        padding: 8,
+                        borderRadius: 6,
+                        fontFamily: "monospace",
+                        display: "inline-block",
+                      }}
+                    >
+                      {mfaSetupData.secret}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(mfaSetupData.secret);
+                        alert("Secret copied to clipboard");
+                      }}
+                      style={{
+                        marginLeft: 12,
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                      }}
+                    >
+                      Copy
+                    </button>
+                    <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>
+                      Alternatively, add account manually using the URI below.
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontFamily: "monospace",
+                        fontSize: 12,
+                        background: "#fafafa",
+                        padding: 8,
+                        borderRadius: 6,
+                      }}
+                    >
+                      {mfaSetupData.otpauth}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
+                  Or manually enter this secret:{" "}
+                  <code
+                    style={{
+                      background: "#fff",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    {mfaSetupData.secret}
+                  </code>
+                </div>
+
+                <p
+                  style={{ fontWeight: 600, marginBottom: 8, color: "#dc2626" }}
                 >
-                  Role
-                </label>
+                  ⚠️ Save these recovery codes (one-time use):
+                </p>
                 <div
-                    style={{ padding: 10, background: "#f9fafb", borderRadius: 8 }}
+                  style={{
+                    background: "#fff",
+                    padding: 12,
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    fontFamily: "monospace",
+                    fontSize: 13,
+                  }}
                 >
-                  {user.role?.name || "—"}
+                  {mfaSetupData.recoveryCodes.join(", ")}
+                </div>
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength="6"
+                    value={mfaCode}
+                    onChange={(e) =>
+                      setMfaCode(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="Enter 6-digit code"
+                    required
+                    style={{
+                      padding: "10px 12px",
+                      border: "2px solid #ddd",
+                      borderRadius: 8,
+                      fontSize: 16,
+                      width: 180,
+                      textAlign: "center",
+                      letterSpacing: 4,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => verifyMfaSetup(e)}
+                    disabled={mfaCode.length !== 6 || mfaStatus === "verifying"}
+                    style={{
+                      padding: "10px 16px",
+                      background: mfaCode.length === 6 ? "#10b981" : "#ccc",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      cursor:
+                        mfaCode.length === 6 && mfaStatus !== "verifying"
+                          ? "pointer"
+                          : "not-allowed",
+                      fontSize: 14,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {mfaStatus === "verifying"
+                      ? "Verifying..."
+                      : "Verify & Enable"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMfaSetupData(null);
+                      setMfaCode("");
+                    }}
+                    style={{
+                      padding: "10px 16px",
+                      background: "#ef4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {petOwner && (
+            <>
+              <h4 style={{ marginTop: 12 }}>Owner profile</h4>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: 6,
+                      color: "#374151",
+                    }}
+                  >
+                    First name
+                  </label>
+                  <input
+                    name="firstName"
+                    value={petOwner.firstName || ""}
+                    onChange={onChangePetOwner}
+                    className="tf"
+                    style={{ width: "100%", padding: 10, borderRadius: 8 }}
+                  />
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: 6,
+                      color: "#374151",
+                    }}
+                  >
+                    Last name
+                  </label>
+                  <input
+                    name="lastName"
+                    value={petOwner.lastName || ""}
+                    onChange={onChangePetOwner}
+                    className="tf"
+                    style={{ width: "100%", padding: 10, borderRadius: 8 }}
+                  />
                 </div>
               </div>
 
-              {/* MFA Setup Section */}
-              <div style={{ marginTop: 24, marginBottom: 24, padding: 16, background: "#f0fdf4", borderRadius: 12, border: "1px solid #86efac" }}>
-                <h4 style={{ marginTop: 0 }}>Two-Factor Authentication (MFA)</h4>
-                <p style={{ fontSize: 14, color: "#666", marginBottom: 12 }}>
-                  Protect your account with an extra layer of security.
-                </p>
-
-                {!mfaSetupData ? (
-                    <div>
-                      {user.mfaEnabled ? (
-                          <div style={{ marginBottom: 12 }}>
-                            <p style={{ color: "#065f46", fontWeight: 600, marginBottom: 8 }}>MFA is currently ENABLED on your account.</p>
-                            <details>
-                              <summary style={{ cursor: "pointer", marginBottom: 8 }}>Disable MFA</summary>
-                              <div style={{ display: "grid", gap: 8, maxWidth: 420, marginTop: 8 }}>
-                                <input
-                                    type="password"
-                                    placeholder="Confirm password (required)"
-                                    value={disableMfa.password}
-                                    onChange={(e) => setDisableMfa((s) => ({ ...s, password: e.target.value }))}
-                                    required
-                                    style={{ padding: 10, border: "2px solid #ddd", borderRadius: 8 }}
-                                />
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    maxLength="6"
-                                    placeholder="6-digit code (optional)"
-                                    value={disableMfa.code}
-                                    onChange={(e) => setDisableMfa((s) => ({ ...s, code: e.target.value.replace(/\\D/g, "") }))}
-                                    style={{ padding: 10, border: "2px solid #ddd", borderRadius: 8 }}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Recovery code (optional alternative)"
-                                    value={disableMfa.recovery}
-                                    onChange={(e) => setDisableMfa((s) => ({ ...s, recovery: e.target.value }))}
-                                    style={{ padding: 10, border: "2px solid #ddd", borderRadius: 8 }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={submitDisableMfa}
-                                    disabled={!disableMfa.password || disableStatus === "saving"}
-                                    style={{ padding: "10px 16px", background: "#ef4444", color: "white", border: "none", borderRadius: 8 }}
-                                >
-                                  {disableStatus === "saving" ? "Disabling…" : "Disable MFA"}
-                                </button>
-                              </div>
-                            </details>
-                          </div>
-                      ) : (
-                          <button
-                              type="button"
-                              onClick={startMfaSetup}
-                              disabled={mfaStatus === "loading"}
-                              style={{
-                                padding: "10px 16px",
-                                background: "#10b981",
-                                color: "white",
-                                border: "none",
-                                borderRadius: 8,
-                                cursor: mfaStatus === "loading" ? "wait" : "pointer",
-                                fontSize: 14,
-                                fontWeight: 500
-                              }}
-                          >
-                            {mfaStatus === "loading" ? "Setting up..." : "🔐 Enable MFA"}
-                          </button>
-                      )}
-                    </div>
-                ) : (
-                    <div>
-                      <p style={{ fontWeight: 600, marginBottom: 8 }}>Scan this QR code with Google Authenticator:</p>
-                      {mfaSetupData.qr ? (
-                          <img
-                              src={mfaSetupData.qr}
-                              alt="MFA QR Code"
-                              style={{ maxWidth: 256, border: "2px solid #ddd", borderRadius: 8, marginBottom: 12 }}
-                          />
-                      ) : (
-                          <div style={{ marginBottom: 12 }}>
-                            <div style={{ marginBottom: 8 }}>
-                              <strong>QR image unavailable.</strong>
-                            </div>
-                            <div style={{ marginBottom: 8 }}>
-                              Use this secret in your authenticator app:
-                            </div>
-                            <div style={{ background: "#fff", padding: 8, borderRadius: 6, fontFamily: "monospace", display: 'inline-block' }}>
-                              {mfaSetupData.secret}
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => { navigator.clipboard?.writeText(mfaSetupData.secret); alert('Secret copied to clipboard'); }}
-                                style={{ marginLeft: 12, padding: '6px 10px', borderRadius: 6 }}
-                            >
-                              Copy
-                            </button>
-                            <div style={{ marginTop: 8, fontSize: 13, color: '#666' }}>
-                              Alternatively, add account manually using the URI below.
-                            </div>
-                            <div style={{ marginTop: 6, fontFamily: 'monospace', fontSize: 12, background: '#fafafa', padding: 8, borderRadius: 6 }}>
-                              {mfaSetupData.otpauth}
-                            </div>
-                          </div>
-                      )}
-
-                      <div style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
-                        Or manually enter this secret: <code style={{ background: "#fff", padding: "2px 6px", borderRadius: 4 }}>{mfaSetupData.secret}</code>
-                      </div>
-
-                      <p style={{ fontWeight: 600, marginBottom: 8, color: "#dc2626" }}>
-                        ⚠️ Save these recovery codes (one-time use):
-                      </p>
-                      <div style={{ background: "#fff", padding: 12, borderRadius: 8, marginBottom: 12, fontFamily: "monospace", fontSize: 13 }}>
-                        {mfaSetupData.recoveryCodes.join(", ")}
-                      </div>
-
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            maxLength="6"
-                            value={mfaCode}
-                            onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
-                            placeholder="Enter 6-digit code"
-                            required
-                            style={{
-                              padding: "10px 12px",
-                              border: "2px solid #ddd",
-                              borderRadius: 8,
-                              fontSize: 16,
-                              width: 180,
-                              textAlign: "center",
-                              letterSpacing: 4
-                            }}
-                        />
-                        <button
-                            type="button"
-                            onClick={(e) => verifyMfaSetup(e)}
-                            disabled={mfaCode.length !== 6 || mfaStatus === "verifying"}
-                            style={{
-                              padding: "10px 16px",
-                              background: mfaCode.length === 6 ? "#10b981" : "#ccc",
-                              color: "white",
-                              border: "none",
-                              borderRadius: 8,
-                              cursor: mfaCode.length === 6 && mfaStatus !== "verifying" ? "pointer" : "not-allowed",
-                              fontSize: 14,
-                              fontWeight: 500
-                            }}
-                        >
-                          {mfaStatus === "verifying" ? "Verifying..." : "Verify & Enable"}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => { setMfaSetupData(null); setMfaCode(""); }}
-                            style={{
-                              padding: "10px 16px",
-                              background: "#ef4444",
-                              color: "white",
-                              border: "none",
-                              borderRadius: 8,
-                              cursor: "pointer",
-                              fontSize: 14
-                            }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                )}
+              <div style={{ marginTop: 12 }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 6,
+                    color: "#374151",
+                  }}
+                >
+                  Phone
+                </label>
+                <input
+                  name="phone"
+                  value={petOwner.phone || ""}
+                  onChange={onChangePetOwner}
+                  className="tf"
+                  style={{ width: "100%", padding: 10, borderRadius: 8 }}
+                />
               </div>
+            </>
+          )}
 
-              {petOwner && (
-                  <>
-                    <h4 style={{ marginTop: 12 }}>Owner profile</h4>
 
-                    <div style={{ display: "flex", gap: 12 }}>
-                      <div style={{ flex: 1 }}>
-                        <label
-                            style={{
-                              display: "block",
-                              marginBottom: 6,
-                              color: "#374151",
-                            }}
-                        >
-                          First name
-                        </label>
-                        <input
-                            name="firstName"
-                            value={petOwner.firstName || ""}
-                            onChange={onChangePetOwner}
-                            className="tf"
-                            style={{ width: "100%", padding: 10, borderRadius: 8 }}
-                        />
-                      </div>
+          <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+            <button
+              type="submit"
+              className="primary"
+              style={{ padding: "10px 14px" }}
+              disabled={status === "saving"}
+            >
+              {status === "saving" ? "Saving…" : "Save changes"}
+            </button>
 
-                      <div style={{ flex: 1 }}>
-                        <label
-                            style={{
-                              display: "block",
-                              marginBottom: 6,
-                              color: "#374151",
-                            }}
-                        >
-                          Last name
-                        </label>
-                        <input
-                            name="lastName"
-                            value={petOwner.lastName || ""}
-                            onChange={onChangePetOwner}
-                            className="tf"
-                            style={{ width: "100%", padding: 10, borderRadius: 8 }}
-                        />
-                      </div>
-                    </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="btn"
+              style={{
+                padding: "10px 14px",
+                background: "#ef4444",
+                color: "white",
+                borderRadius: 8,
+              }}
+            >
+              Logout
+            </button>
 
-                    <div style={{ marginTop: 12 }}>
-                      <label
-                          style={{
-                            display: "block",
-                            marginBottom: 6,
-                            color: "#374151",
-                          }}
-                      >
-                        Phone
-                      </label>
-                      <input
-                          name="phone"
-                          value={petOwner.phone || ""}
-                          onChange={onChangePetOwner}
-                          className="tf"
-                          style={{ width: "100%", padding: 10, borderRadius: 8 }}
-                      />
-                    </div>
-                  </>
-              )}
+            <button
+              type="button"
+              onClick={deleteAccount}
+              className="btn"
+              style={{
+                padding: "10px 14px",
+                background: "#111827",
+                color: "white",
+                borderRadius: 8,
+              }}
+            >
+              Delete account
+            </button>
 
-              {!petOwner && user.role?.name === "PET_OWNER" && (
-                  <div style={{ marginTop: 16, padding: 16, border: "1px dashed #ddd", borderRadius: 8 }}>
-                    <h4 style={{ marginTop: 0 }}>Create your Owner profile</h4>
-                    <p style={{ fontSize: 14, color: "#666", marginBottom: 12 }}>
-                      We couldn't find an existing owner record for your account. Create one to manage your pets.
-                    </p>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, maxWidth: 520 }}>
-                      <input
-                          placeholder="First name"
-                          value={ownerDraft.firstName}
-                          onChange={(e) => setOwnerDraft((s) => ({ ...s, firstName: e.target.value }))}
-                          className="tf"
-                          style={{ padding: 10, borderRadius: 8 }}
-                      />
-                      <input
-                          placeholder="Last name"
-                          value={ownerDraft.lastName}
-                          onChange={(e) => setOwnerDraft((s) => ({ ...s, lastName: e.target.value }))}
-                          className="tf"
-                          style={{ padding: 10, borderRadius: 8 }}
-                      />
-                      <input
-                          placeholder="Phone (optional)"
-                          value={ownerDraft.phone}
-                          onChange={(e) => setOwnerDraft((s) => ({ ...s, phone: e.target.value }))}
-                          className="tf"
-                          style={{ padding: 10, borderRadius: 8, gridColumn: "1 / span 2" }}
-                      />
-                    </div>
-                    <button
-                        type="button"
-                        onClick={createOwnerForSelf}
-                        disabled={status === "saving_owner"}
-                        style={{ marginTop: 12, padding: "10px 14px", background: "#111827", color: "white", borderRadius: 8 }}
-                    >
-                      {status === "saving_owner" ? "Creating…" : "Create owner profile"}
-                    </button>
-                    {status === "error_owner" && (
-                        <div style={{ color: "#b00020", marginTop: 8 }}>Failed to create owner. Check console for details.</div>
-                    )}
-                  </div>
-              )}
-
-              <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-                <button
-                    type="submit"
-                    className="primary"
-                    style={{ padding: "10px 14px" }}
-                    disabled={status === "saving"}
-                >
-                  {status === "saving" ? "Saving…" : "Save changes"}
-                </button>
-
-                <button
-                    type="button"
-                    onClick={logout}
-                    className="btn"
-                    style={{
-                      padding: "10px 14px",
-                      background: "#ef4444",
-                      color: "white",
-                      borderRadius: 8,
-                    }}
-                >
-                  Logout
-                </button>
-
-                <button
-                    type="button"
-                    onClick={deleteAccount}
-                    className="btn"
-                    style={{
-                      padding: "10px 14px",
-                      background: "#111827",
-                      color: "white",
-                      borderRadius: 8,
-                    }}
-                >
-                  Delete account
-                </button>
-
-                {status === "saved" && (
-                    <div style={{ color: "#0a7a2f", alignSelf: "center" }}>Saved</div>
-                )}
-                {status === "error" && (
-                    <div style={{ color: "#b00020", alignSelf: "center" }}>
-                      Failed to save
-                    </div>
-                )}
+            {status === "saved" && (
+              <div style={{ color: "#0a7a2f", alignSelf: "center" }}>Saved</div>
+            )}
+            {status === "error" && (
+              <div style={{ color: "#b00020", alignSelf: "center" }}>
+                Failed to save
               </div>
-            </form>
-        )}
-      </div>
+            )}
+          </div>
+        </form>
+      )}
+    </div>
   );
 }

@@ -36,7 +36,7 @@ export default function LoginPage() {
 
       // Default redirect to clinics list for new OAuth users
       console.log("[LoginPage] Redirecting authenticated user to clinics list");
-      navigate("/clinics", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate, location]);
 

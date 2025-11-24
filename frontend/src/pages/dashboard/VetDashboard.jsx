@@ -1,15 +1,12 @@
 // src/pages/dashboard/VetDashboard.jsx
 import React from "react";
-import { AuthService } from "../../services/AuthService";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthProvider";
 
 export default function VetDashboard() {
-  const navigate = useNavigate();
-  const user = AuthService.getCurrentUser();
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    AuthService.logout();
-    navigate("/login");
+    logout();
   };
 
   return (

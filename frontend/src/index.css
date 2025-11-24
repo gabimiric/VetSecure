@@ -7,10 +7,17 @@
   --text: #0f1724;
   --primaryA: #5b8cff;
   --primaryB: #3b5bdb;
-  --radius: 12px;
-  --shadow-sm: 0 6px 18px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 12px 36px rgba(16, 24, 40, 0.08);
+  --success: #0a7a2f;
+  --danger: #b00020;
+  --radius: 14px;
+  --shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
   --input-border: #e6e9ee;
+}
+
+body {
+  background: linear-gradient(180deg, var(--bg), #ffffff00);
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* Base page / typography */
@@ -67,7 +74,6 @@ textarea,
 button {
   font-family: inherit;
   font-size: 14px;
-  box-sizing: border-box;
 }
 
 /* Inputs and selects: full width and consistent look */
@@ -167,7 +173,5 @@ select:focus {
 input,
 select,
 textarea {
-  width: 100% !important;
-  max-width: 100% !important;
   box-sizing: border-box !important;
 }

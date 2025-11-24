@@ -1,22 +1,21 @@
 // src/layout/navbar.jsx
 import React from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import "./navbar.css";
 
 export default function Navbar() {
-  const { user, isAuthenticated, signOut } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignOut = () => {
-    signOut();
-    navigate("/login");
-  };
+  // derive role name in a safe way (supports both object and string roles)
+  const roleName = user?.role?.name || user?.role || null;
 
   return (
     <header className="header">
       <nav className="navbar" role="navigation" aria-label="Main navigation">
-        <Link to={isAuthenticated ? "/clinics" : "/"} className="brand">
+        {/* Logo: point to dashboard when authenticated, otherwise home */}
+        <Link to={isAuthenticated ? "/dashboard" : "/"} className="brand">
           VetSecure
         </Link>
 
@@ -40,6 +39,30 @@ export default function Navbar() {
                 >
                   Dashboard
                 </NavLink>
+
+                {/* Role-based links: Register Clinic only for clinic admin / super admin */}
+                {(roleName === "CLINIC_ADMIN" || roleName === "SUPER_ADMIN") && (
+                  <NavLink
+                    to="/register/clinic"
+                    className={({ isActive }) =>
+                      "nav-link" + (isActive ? " active" : "")
+                    }
+                  >
+                    Register Clinic
+                  </NavLink>
+                )}
+
+                {/* Admin requests only for SUPER_ADMIN */}
+                {roleName === "SUPER_ADMIN" && (
+                  <NavLink
+                    to="/admin/requests"
+                    className={({ isActive }) =>
+                      "nav-link" + (isActive ? " active" : "")
+                    }
+                  >
+                    Admin Requests
+                  </NavLink>
+                )}
               </>
             ) : (
               <NavLink
@@ -52,97 +75,10 @@ export default function Navbar() {
                 Home
               </NavLink>
             )}
-
-            {isAuthenticated && (
-              <>
-                <NavLink
-                  to="/register/petOwner"
-                  className={({ isActive }) =>
-                    "nav-link" + (isActive ? " active" : "")
-                  }
-                >
-                  Register Owner
-                </NavLink>
-
-                <NavLink
-                  to="/register/pet"
-                  className={({ isActive }) =>
-                    "nav-link" + (isActive ? " active" : "")
-                  }
-                >
-                  Register Pet
-                </NavLink>
-
-                <NavLink
-                  to="/register/clinic"
-                  className={({ isActive }) =>
-                    "nav-link" + (isActive ? " active" : "")
-                  }
-                >
-                  Register Clinic
-                </NavLink>
-
-                <NavLink
-                  to="/admin/requests"
-                  className={({ isActive }) =>
-                    "nav-link" + (isActive ? " active" : "")
-                  }
-                >
-                  Admin Requests
-                </NavLink>
-              </>
-            )}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {/* Profile button visible only if logged in */}
-            {isAuthenticated && user && (
-              <NavLink
-                to="/profile"
-                className={({ isActive }) =>
-                  "profile-pill" + (isActive ? " active" : "")
-                }
-              >
-                <div className="profile-avatar" aria-hidden>
-                  {String(user.username || user.email || "U")
-                    .split(" ")
-                    .map((s) => s[0])
-                    .slice(0, 2)
-                    .join("")
-                    .toUpperCase()}
-                </div>
-                <span>{user.username || user.email}</span>
-              </NavLink>
-            )}
-
-            {/* Sign Out button */}
-            {isAuthenticated ? (
-              <button
-                onClick={handleSignOut}
-                className="button secondary"
-                style={{
-                  padding: "8px 16px",
-                  fontSize: 14,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap"
-                }}
-              >
-                Sign Out
-              </button>
-            ) : (
-              <Link
-                to="/login"
-                className="button primary"
-                style={{
-                  padding: "8px 16px",
-                  fontSize: 14,
-                  textDecoration: "none",
-                  whiteSpace: "nowrap"
-                }}
-              >
-                Sign In
-              </Link>
-            )}
+          <div className="nav-actions">
+            {/* Removed Register / Login buttons from navbar (they are on Home). */}
           </div>
         </div>
       </nav>
