@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthService } from "../../services/AuthService";
+import { useAuth } from "../../auth/AuthProvider";
 import { api } from "../../services/http";
 import "../../styles/petowner.css";
 
 export default function PetOwnerDashboard() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [petOwnerData, setPetOwnerData] = useState(null);
   const [error, setError] = useState(null);
-
-  const user = AuthService.getCurrentUser();
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -99,11 +98,11 @@ export default function PetOwnerDashboard() {
     }
 
     loadDashboardData();
-  }, [user?.id]);
+  }, [user]);
 
   const handleLogout = () => {
-    AuthService.logout();
-    navigate("/login");
+    signOut();
+    // signOut() will handle navigation
   };
 
   // display name / avatar initials

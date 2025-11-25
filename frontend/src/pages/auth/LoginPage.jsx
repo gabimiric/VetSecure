@@ -14,7 +14,8 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { signInWithGoogle, isAuthenticated, requestMfa, completeLogin } = useAuth();
+  const { signInWithGoogle, isAuthenticated, requestMfa, completeLogin } =
+    useAuth();
 
   // Guard refs to prevent infinite loops
   const initializedRef = useRef(false);
@@ -28,17 +29,24 @@ export default function LoginPage() {
 
       // Check if there's a return path
       const returnPath = location.state?.from?.pathname;
-      if (returnPath && returnPath !== "/login") {
+      if (returnPath && returnPath !== "/login" && returnPath !== "/register") {
         console.log("[LoginPage] Redirecting to return path:", returnPath);
         navigate(returnPath, { replace: true });
         return;
       }
 
-      // Default redirect to clinics list for new OAuth users
-      console.log("[LoginPage] Redirecting authenticated user to clinics list");
+      // Default redirect to dashboard
+      console.log("[LoginPage] auto-redirect to: /dashboard");
       navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate, location]);
+
+  // Reset navigation guard when authentication state changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasNavigatedRef.current = false;
+    }
+  }, [isAuthenticated]);
 
   // Initialize Google Sign-In button (StrictMode-safe)
   useEffect(() => {
@@ -46,11 +54,14 @@ export default function LoginPage() {
 
     // Debug logs: show the client ID from env and the current origin to help diagnose GSI 403
     try {
-      console.log('[LoginPage] REACT_APP_GOOGLE_CLIENT_ID =', clientId);
-      console.log('[LoginPage] window.location.origin =', window.location?.origin || window.location?.href);
+      console.log("[LoginPage] REACT_APP_GOOGLE_CLIENT_ID =", clientId);
+      console.log(
+        "[LoginPage] window.location.origin =",
+        window.location?.origin || window.location?.href
+      );
     } catch (e) {
       // ignore in environments where location isn't available
-      console.warn('[LoginPage] debug log error', e);
+      console.warn("[LoginPage] debug log error", e);
     }
 
     if (!window.google || !clientId) return;
@@ -102,7 +113,9 @@ export default function LoginPage() {
       const { AuthService } = await import("../../services/AuthService");
 
       // Debug: log the outgoing login payload so we can verify it's sending email (not username)
-      console.log('[LoginPage] attempting login with:', { emailOrUsername: form.usernameOrEmail });
+      console.log("[LoginPage] attempting login with:", {
+        emailOrUsername: form.usernameOrEmail,
+      });
 
       const result = await AuthService.login({
         usernameOrEmail: form.usernameOrEmail,
@@ -122,7 +135,7 @@ export default function LoginPage() {
         try {
           completeLogin(result.token);
         } catch (e) {
-          console.warn('[LoginPage] completeLogin failed', e);
+          console.warn("[LoginPage] completeLogin failed", e);
         }
         setStatus("saved");
         navigate("/dashboard");
@@ -139,7 +152,8 @@ export default function LoginPage() {
       try {
         // err.message may contain raw JSON like '{"error":"Invalid credentials"}'
         const parsed = JSON.parse(err.message);
-        if (parsed && (parsed.error || parsed.message)) msg = parsed.error || parsed.message;
+        if (parsed && (parsed.error || parsed.message))
+          msg = parsed.error || parsed.message;
       } catch (e) {
         // not JSON, fall back to message text
         if (err.message) msg = err.message;
@@ -150,65 +164,78 @@ export default function LoginPage() {
   };
 
   return (
-      <div className="auth-screen">
-        <form className="auth-card" onSubmit={submit}>
-          <h2 className="auth-title">Sign in to VetSecure</h2>
+    <div className="auth-screen">
+      <form className="auth-card" onSubmit={submit}>
+        <h2 className="auth-title">Sign in to VetSecure</h2>
 
-          {/* Google Sign-In Button */}
-          <div style={{ marginBottom: 20 }}>
-            <div ref={buttonRef} style={{ display: "flex", justifyContent: "center" }} />
-            {error && <p className="error" style={{ marginTop: 8, fontSize: 14 }}>{error}</p>}
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", margin: "16px 0" }}>
-            <hr style={{ flex: 1, opacity: 0.25 }} />
-            <span style={{ padding: "0 12px", color: "#777", fontSize: 14 }}>or</span>
-            <hr style={{ flex: 1, opacity: 0.25 }} />
-          </div>
-
-          <label className="label">
-            Username or Email
-            <input
-                name="usernameOrEmail"
-                value={form.usernameOrEmail}
-                onChange={onChange}
-                className="tf"
-                required
-            />
-          </label>
-          <label className="label">
-            Password
-            <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={onChange}
-                className="tf"
-                required
-            />
-          </label>
-          <label className="label checkbox-row">
-            <input
-                type="checkbox"
-                name="remember"
-                checked={form.remember}
-                onChange={onChange}
-            />{" "}
-            Remember me
-          </label>
-
-          <button
-              className="primary"
-              type="submit"
-              disabled={status === "saving"}
-          >
-            {status === "saving" ? "Signing in..." : "Sign in"}
-          </button>
-
-          {status === "error" && (
-              <p className="error">{error || 'Sign in failed — check credentials.'}</p>
+        {/* Google Sign-In Button */}
+        <div style={{ marginBottom: 20 }}>
+          <div
+            ref={buttonRef}
+            style={{ display: "flex", justifyContent: "center" }}
+          />
+          {error && (
+            <p className="error" style={{ marginTop: 8, fontSize: 14 }}>
+              {error}
+            </p>
           )}
-        </form>
-      </div>
+        </div>
+
+        <div
+          style={{ display: "flex", alignItems: "center", margin: "16px 0" }}
+        >
+          <hr style={{ flex: 1, opacity: 0.25 }} />
+          <span style={{ padding: "0 12px", color: "#777", fontSize: 14 }}>
+            or
+          </span>
+          <hr style={{ flex: 1, opacity: 0.25 }} />
+        </div>
+
+        <label className="label">
+          Username or Email
+          <input
+            name="usernameOrEmail"
+            value={form.usernameOrEmail}
+            onChange={onChange}
+            className="tf"
+            required
+          />
+        </label>
+        <label className="label">
+          Password
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={onChange}
+            className="tf"
+            required
+          />
+        </label>
+        <label className="label checkbox-row">
+          <input
+            type="checkbox"
+            name="remember"
+            checked={form.remember}
+            onChange={onChange}
+          />{" "}
+          Remember me
+        </label>
+
+        <button
+          className="primary"
+          type="submit"
+          disabled={status === "saving"}
+        >
+          {status === "saving" ? "Signing in..." : "Sign in"}
+        </button>
+
+        {status === "error" && (
+          <p className="error">
+            {error || "Sign in failed — check credentials."}
+          </p>
+        )}
+      </form>
+    </div>
   );
 }

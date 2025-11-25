@@ -40,74 +40,96 @@ export default function Profile() {
       setLoading(true);
       // inside useEffect load() in Profile.jsx
       try {
-        const res = await api.get(`/users/${user.id}`);
-        const u = res.data;
-        setUser(u);
-
-        if (u && u.role && u.role.name === "PET_OWNER") {
-          // First, try to resolve by current user (email from JWT) to avoid id/email mismatches
+        // Try /users/me first, then fallback to /users/{id}
+        let u = null;
+        try {
+          const resMe = await api.get(`/users/me`);
+          u = resMe.data;
+        } catch (eMe) {
+          console.warn("Could not fetch /users/me, trying by ID:", eMe);
           try {
-            const r = await api.get(`/api/owners/me`);
-            setPetOwner(r.data);
-            setOwnerDraft({
-              firstName: r.data?.firstName || "",
-              lastName: r.data?.lastName || "",
-              phone: r.data?.phone || "",
-            });
-          } catch (e) {
-            console.warn(
-              "Fallback to id-based and legacy endpoints due to /api/owners/me failure:",
-              e?.response?.status
-            );
-            // If we get 403 from both, the user likely doesn't have a PetOwner profile yet
-            if (e?.response?.status === 403 || e?.response?.status === 404) {
-              try {
-                const rId = await api.get(`/api/owners/${u.id}`);
-                setPetOwner(rId.data);
-                setOwnerDraft({
-                  firstName: rId.data?.firstName || "",
-                  lastName: rId.data?.lastName || "",
-                  phone: rId.data?.phone || "",
-                });
-              } catch (eId) {
-                console.warn(
-                  "Fallback to legacy /pet-owners after id attempt:",
-                  eId?.response?.status
-                );
+            const res = await api.get(`/users/${user.id}`);
+            u = res.data;
+          } catch (eId) {
+            // If both fail, use stored user data
+            console.warn("Could not fetch user from backend, using stored data:", eId);
+            u = user;
+          }
+        }
+        
+        if (u) {
+          setUser(u);
+
+          if (u.role && u.role.name === "PET_OWNER") {
+            // First, try to resolve by current user (email from JWT) to avoid id/email mismatches
+            try {
+              const r = await api.get(`/api/owners/me`);
+              setPetOwner(r.data);
+              setOwnerDraft({
+                firstName: r.data?.firstName || "",
+                lastName: r.data?.lastName || "",
+                phone: r.data?.phone || "",
+              });
+            } catch (e) {
+              console.warn(
+                "Fallback to id-based and legacy endpoints due to /api/owners/me failure:",
+                e?.response?.status
+              );
+              // If we get 403 from both, the user likely doesn't have a PetOwner profile yet
+              if (e?.response?.status === 403 || e?.response?.status === 404) {
                 try {
-                  const r2 = await api.get(`/pet-owners/${u.id}`);
-                  setPetOwner(r2.data);
+                  const rId = await api.get(`/api/owners/${u.id}`);
+                  setPetOwner(rId.data);
                   setOwnerDraft({
-                    firstName: r2.data?.firstName || "",
-                    lastName: r2.data?.lastName || "",
-                    phone: r2.data?.phone || "",
+                    firstName: rId.data?.firstName || "",
+                    lastName: rId.data?.lastName || "",
+                    phone: rId.data?.phone || "",
                   });
-                } catch (e2) {
-                  if (
-                    e2?.response?.status === 403 ||
-                    e2?.response?.status === 404
-                  ) {
-                    console.info(
-                      "No PetOwner profile found or not authorized yet; allow creating one from UI."
-                    );
-                    setPetOwner(null);
-                  } else {
-                    throw e2;
+                } catch (eId) {
+                  console.warn(
+                    "Fallback to legacy /pet-owners after id attempt:",
+                    eId?.response?.status
+                  );
+                  try {
+                    const r2 = await api.get(`/pet-owners/${u.id}`);
+                    setPetOwner(r2.data);
+                    setOwnerDraft({
+                      firstName: r2.data?.firstName || "",
+                      lastName: r2.data?.lastName || "",
+                      phone: r2.data?.phone || "",
+                    });
+                  } catch (e2) {
+                    if (
+                      e2?.response?.status === 403 ||
+                      e2?.response?.status === 404
+                    ) {
+                      console.info(
+                        "No PetOwner profile found or not authorized yet; allow creating one from UI."
+                      );
+                      setPetOwner(null);
+                    } else {
+                      // Only show alert for unexpected errors
+                      console.error("Unexpected error loading pet owner:", e2);
+                    }
                   }
                 }
+              } else {
+                // Only show alert for unexpected errors (not 403/404)
+                console.error("Unexpected error loading pet owner:", e);
               }
-            } else {
-              throw e;
             }
+          } else {
+            setPetOwner(null);
           }
-        } else {
-          setPetOwner(null);
         }
       } catch (err) {
-        console.error("Error: ", err);
-        alert(
-          "Failed to fetch user: " + (err.response?.data || err.message || err)
-        );
+        console.error("Error loading profile: ", err);
+        // Only show alert for critical errors that prevent the page from loading
+        if (err?.response?.status !== 403 && err?.response?.status !== 404) {
+          alert(
+            "Failed to fetch user: " + (err.response?.data?.message || err.message || "Unknown error")
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -756,6 +778,83 @@ export default function Profile() {
             </>
           )}
 
+          {!petOwner && user.role?.name === "PET_OWNER" && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: 16,
+                border: "1px dashed #ddd",
+                borderRadius: 8,
+              }}
+            >
+              <h4 style={{ marginTop: 0 }}>Create your Owner profile</h4>
+              <p style={{ fontSize: 14, color: "#666", marginBottom: 12 }}>
+                We couldn't find an existing owner record for your account.
+                Create one to manage your pets.
+              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                  maxWidth: 520,
+                }}
+              >
+                <input
+                  placeholder="First name"
+                  value={ownerDraft.firstName}
+                  onChange={(e) =>
+                    setOwnerDraft((s) => ({ ...s, firstName: e.target.value }))
+                  }
+                  className="tf"
+                  style={{ padding: 10, borderRadius: 8 }}
+                />
+                <input
+                  placeholder="Last name"
+                  value={ownerDraft.lastName}
+                  onChange={(e) =>
+                    setOwnerDraft((s) => ({ ...s, lastName: e.target.value }))
+                  }
+                  className="tf"
+                  style={{ padding: 10, borderRadius: 8 }}
+                />
+                <input
+                  placeholder="Phone (optional)"
+                  value={ownerDraft.phone}
+                  onChange={(e) =>
+                    setOwnerDraft((s) => ({ ...s, phone: e.target.value }))
+                  }
+                  className="tf"
+                  style={{
+                    padding: 10,
+                    borderRadius: 8,
+                    gridColumn: "1 / span 2",
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={createOwnerForSelf}
+                disabled={status === "saving_owner"}
+                style={{
+                  marginTop: 12,
+                  padding: "10px 14px",
+                  background: "#111827",
+                  color: "white",
+                  borderRadius: 8,
+                }}
+              >
+                {status === "saving_owner"
+                  ? "Creating…"
+                  : "Create owner profile"}
+              </button>
+              {status === "error_owner" && (
+                <div style={{ color: "#b00020", marginTop: 8 }}>
+                  Failed to create owner. Check console for details.
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
             <button

@@ -3,6 +3,7 @@ package com.vetsecure.backend.controller;
 import com.vetsecure.backend.model.User;
 import com.vetsecure.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,16 @@ public class UserController {
     @GetMapping("/{id}")
     public Optional<User> getUser(@PathVariable Long id) {
         return userRepository.findById(id);
+    }
+
+    /** GET /users/me - Get current authenticated user */
+    @GetMapping("/me")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+    public ResponseEntity<User> getCurrentUser(org.springframework.security.core.Authentication auth) {
+        String email = auth.getName(); // email from JWT
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(user);
     }
 
     @PostMapping

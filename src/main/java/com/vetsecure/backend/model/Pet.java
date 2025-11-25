@@ -3,17 +3,19 @@ package com.vetsecure.backend.model;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
-@Table(name = "pet")
+@Table(name = "pets")
 public class Pet {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "owner_id", nullable = false)
-    @NotNull(message = "Owner is required")
+    @JsonIgnoreProperties({"pets", "user"}) // Prevent circular reference and lazy loading issues
+    // Note: @NotNull removed - owner is set by controller from authenticated user
     private PetOwner owner;
 
     @Column(nullable = false)
@@ -26,7 +28,7 @@ public class Pet {
     @Size(max = 100, message = "Breed name too long")
     private String breed;
 
-    @Pattern(regexp = "^(Male|Female|Unknown)$", message = "Invalid gender")
+    @Pattern(regexp = "^(?i)(Male|Female|Unknown)$", message = "Invalid gender")
     private String gender;
 
     @DecimalMin(value = "0.1", message = "Weight must be positive")
@@ -54,7 +56,23 @@ public class Pet {
     public void setBreed(String breed) { this.breed = breed; }
 
     public String getGender() { return gender; }
-    public void setGender(String gender) { this.gender = gender; }
+    public void setGender(String gender) {
+        // Normalize gender to proper case (Male, Female, Unknown)
+        if (gender != null) {
+            String normalized = gender.trim();
+            if (normalized.equalsIgnoreCase("male")) {
+                this.gender = "Male";
+            } else if (normalized.equalsIgnoreCase("female")) {
+                this.gender = "Female";
+            } else if (normalized.equalsIgnoreCase("unknown")) {
+                this.gender = "Unknown";
+            } else {
+                this.gender = gender; // Let validation handle invalid values
+            }
+        } else {
+            this.gender = null;
+        }
+    }
 
     public Double getWeight() { return weight; }
     public void setWeight(Double weight) { this.weight = weight; }

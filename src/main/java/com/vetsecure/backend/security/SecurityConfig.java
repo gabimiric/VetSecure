@@ -16,6 +16,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -53,14 +54,22 @@ public class SecurityConfig {
                                 "/auth/mfa/verify-login",     // current MFA controller base
                                 "/auth/mfa/**",               // allow MFA setup/verify during dev
                                 "/api/auth/mfa/verify-login", // include if you later move under /api
-                                "/roles", "/users", "/pet-owners", "vets",         // registration/public bootstrap endpoints (allow subpaths)
-                                "/v3/api-docs/**", "/swagger-ui/**",
-                                "/public/**",
-                                "/actuator/health", "/actuator/info"
-                        ).permitAll()
+                                "/roles", "/roles/**", "/api/roles", "/api/roles/**", // registration/public bootstrap endpoints
+                                "/users", "/pet-owners", "/vets",         // registration/public bootstrap endpoints
+                        "/v3/api-docs/**", "/swagger-ui/**",
+                        "/public/**",
+                        "/actuator/health", "/actuator/info"
+                ).permitAll()
+                // Allow unauthenticated clinic request submission
+                .requestMatchers(HttpMethod.POST, "/api/clinic-requests").permitAll()
+                        // Allow public read of clinics (only approved should be shown client-side)
+                        .requestMatchers(HttpMethod.GET, "/api/clinics", "/api/clinics/**").permitAll()
 
-                        // —— Admin endpoints ——
-                        .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN","CLINIC_ADMIN")
+                // —— Admin endpoints ——
+                .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN","CLINIC_ADMIN")
+                        
+                        // —— Authenticated endpoints (require valid JWT) ——
+                        .requestMatchers("/api/clinic-requests/me").authenticated()
 
                         // —— Everything else requires auth ——
                         .anyRequest().authenticated()

@@ -16,16 +16,39 @@ export default function RegisterPage() {
     firstName: "",
     lastName: "",
     phone: "",
+    license: "", // for VET
+    clinicId: "", // for VET and ASSISTANT
   });
   const [status, setStatus] = useState(null);
   const navigate = useNavigate();
   const [errorMsg, setErrorMsg] = useState("");
-  const auth = useAuth(); // new
+  const auth = useAuth();
+  const { completeLogin } = auth;
+  const [clinics, setClinics] = useState([]);
 
-  // Debug: log when RegisterPage mounts to help diagnose unexpected redirects
+  // Load clinics for VET and ASSISTANT roles
+  // Note: This may fail if endpoint requires auth - clinic can be selected after registration
   useEffect(() => {
-    console.log("[RegisterPage] mounted");
-  }, []);
+    if (form.role === "VET" || form.role === "ASSISTANT") {
+      const loadClinics = async () => {
+        try {
+          const { api } = await import("../../services/http");
+          const res = await api.get("/api/clinics?status=APPROVED");
+          setClinics(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+          console.warn(
+            "Failed to load clinics (may require authentication):",
+            err
+          );
+          // If clinics can't be loaded, user can select clinic after registration
+          setClinics([]);
+        }
+      };
+      loadClinics();
+    } else {
+      setClinics([]);
+    }
+  }, [form.role]);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -33,14 +56,37 @@ export default function RegisterPage() {
   };
 
   const isPetOwner = form.role === "PET_OWNER";
+  const isVet = form.role === "VET";
+  const isAssistant = form.role === "ASSISTANT";
+  const needsClinic = isVet || isAssistant;
 
   const submit = async (e) => {
     e.preventDefault();
     setStatus("saving");
     setErrorMsg("");
 
+    if (form.password !== form.confirm) {
+      setStatus("error");
+      setErrorMsg("Passwords do not match");
+      return;
+    }
+
+    if (form.password.length < 6) {
+      setStatus("error");
+      setErrorMsg("Password must be at least 8 characters");
+      return;
+    }
+
+    // Allow registration without clinic if clinics couldn't be loaded
+    // User can update their profile after registration to select a clinic
+    if (needsClinic && !form.clinicId && clinics.length > 0) {
+      setStatus("error");
+      setErrorMsg("Please select a clinic");
+      return;
+    }
+
     try {
-      // create user + pet owner record (AuthService.register may create owner)
+      // create user + role-specific profile
       await AuthService.register({
         username: form.username,
         email: form.email,
@@ -49,14 +95,25 @@ export default function RegisterPage() {
         firstName: form.firstName,
         lastName: form.lastName,
         phone: form.phone,
+        license: form.license,
+        clinicId: form.clinicId ? Number(form.clinicId) : null,
       });
 
       // Attempt an immediate login so subsequent requests are authenticated
       try {
-        await auth.login(
-          { usernameOrEmail: form.email, password: form.password },
-          form.remember
-        );
+        const { AuthService } = await import("../../services/AuthService");
+        const loginResult = await AuthService.login({
+          usernameOrEmail: form.email,
+          password: form.password,
+          remember: form.remember,
+        });
+
+        // Complete login in AuthProvider to set user context with role
+        if (loginResult?.token || loginResult?.user?.token) {
+          const token = loginResult.token || loginResult.user?.token;
+          completeLogin(token);
+        }
+
         // only navigate after successful login
         navigate("/dashboard", { replace: true });
       } catch (loginErr) {
@@ -69,7 +126,23 @@ export default function RegisterPage() {
     } catch (err) {
       console.error("Registration failed", err);
       setStatus("error");
-      setErrorMsg(err?.message || "Registration failed");
+
+      // Provide helpful error messages for common issues
+      let errorMessage = err?.message || "Registration failed";
+
+      if (
+        errorMessage.includes("NetworkError") ||
+        errorMessage.includes("CORS") ||
+        errorMessage.includes("fetch")
+      ) {
+        errorMessage =
+          "Cannot connect to backend server. Please ensure the backend is running on http://localhost:8082";
+      } else if (errorMessage.includes("Failed to fetch roles")) {
+        errorMessage =
+          "Cannot fetch available roles. Please ensure the backend server is running.";
+      }
+
+      setErrorMsg(errorMessage);
     }
   };
 
@@ -119,8 +192,8 @@ export default function RegisterPage() {
           </select>
         </label>
 
-        {/* Conditionally show pet owner fields */}
-        {isPetOwner && (
+        {/* Conditionally show role-specific fields */}
+        {(isPetOwner || isVet || isAssistant) && (
           <>
             <label className="label">
               First name *
@@ -129,7 +202,7 @@ export default function RegisterPage() {
                 value={form.firstName}
                 onChange={onChange}
                 className="tf"
-                required={isPetOwner}
+                required
                 placeholder="Your first name"
               />
             </label>
@@ -141,21 +214,76 @@ export default function RegisterPage() {
                 value={form.lastName}
                 onChange={onChange}
                 className="tf"
-                required={isPetOwner}
+                required
                 placeholder="Your last name"
               />
             </label>
 
-            <label className="label">
-              Phone
-              <input
-                name="phone"
-                value={form.phone}
-                onChange={onChange}
-                className="tf"
-                placeholder="Optional phone number"
-              />
-            </label>
+            {isPetOwner && (
+              <label className="label">
+                Phone
+                <input
+                  name="phone"
+                  value={form.phone}
+                  onChange={onChange}
+                  className="tf"
+                  placeholder="Optional phone number"
+                />
+              </label>
+            )}
+
+            {isVet && (
+              <label className="label">
+                License Number *
+                <input
+                  name="license"
+                  value={form.license}
+                  onChange={onChange}
+                  className="tf"
+                  required
+                  placeholder="Veterinary license number"
+                />
+              </label>
+            )}
+
+            {needsClinic && (
+              <label className="label">
+                Clinic *
+                {clinics.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "8px 0",
+                      color: "#666",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <p>
+                      No clinics available. You can select a clinic after
+                      registration.
+                    </p>
+                    <p style={{ fontSize: "12px", marginTop: "4px" }}>
+                      Note: Clinic selection may require authentication. You can
+                      update your profile after logging in.
+                    </p>
+                  </div>
+                ) : (
+                  <select
+                    name="clinicId"
+                    value={form.clinicId}
+                    onChange={onChange}
+                    className="tf"
+                    required
+                  >
+                    <option value="">Select a clinic</option>
+                    {clinics.map((clinic) => (
+                      <option key={clinic.id} value={clinic.id}>
+                        {clinic.name} - {clinic.city || clinic.address}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </label>
+            )}
           </>
         )}
 
@@ -169,7 +297,7 @@ export default function RegisterPage() {
             className="tf"
             required
             minLength="6"
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
           />
         </label>
 

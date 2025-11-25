@@ -1,16 +1,16 @@
 // src/components/ClinicRequestForm.jsx
 import React, { useState } from "react";
+import { useAuth } from "../auth/AuthProvider";
 import { postClinicRequest } from "../api/client";
 import "../styles/clinic.css";
 
 export default function ClinicRequestForm() {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     clinicName: "",
     address: "",
     city: "",
     phone: "",
-    adminName: "",
-    adminEmail: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [okMsg, setOkMsg] = useState("");
@@ -24,18 +24,104 @@ export default function ClinicRequestForm() {
     e.preventDefault();
     setOkMsg("");
     setErrMsg("");
+
+    // Validate that user is logged in
+    if (!user || !user.email) {
+      setErrMsg("You must be logged in to submit a clinic request.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const res = await postClinicRequest(form);
+      // Fetch actual user data from backend to ensure we have the correct username from database
+      let actualUsername = user.username;
+      let actualEmail = user.email;
+
+      try {
+        const { api } = await import("../services/http");
+        // Fetch current user from backend to get the actual username from database
+        try {
+          const userRes = await api.get("/users/me");
+          if (userRes.data?.username) {
+            actualUsername = userRes.data.username;
+            console.log(
+              "[ClinicRequestForm] Fetched username from DB:",
+              actualUsername
+            );
+          }
+          if (userRes.data?.email) {
+            actualEmail = userRes.data.email;
+          }
+        } catch (err) {
+          console.warn(
+            "Could not fetch user from /users/me, trying by ID:",
+            err
+          );
+          // Fallback: try fetching by ID
+          if (user.id) {
+            try {
+              const userRes = await api.get(`/users/${user.id}`);
+              if (userRes.data) {
+                // Handle both direct user object and Optional<User> wrapper
+                const userData = userRes.data.username
+                  ? userRes.data
+                  : userRes.data;
+                if (userData.username) {
+                  actualUsername = userData.username;
+                  console.log(
+                    "[ClinicRequestForm] Fetched username from DB by ID:",
+                    actualUsername
+                  );
+                }
+                if (userData.email) {
+                  actualEmail = userData.email;
+                }
+              }
+            } catch (err2) {
+              console.warn(
+                "Could not fetch user by ID either, using JWT data:",
+                err2
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch user data, using JWT data:", err);
+      }
+
+      // Use the actual username from database, fallback to JWT username, then email prefix
+      const adminName =
+        actualUsername || user.username || user.email?.split("@")[0] || "Admin";
+      const adminEmail = actualEmail || user.email;
+
+      console.log("[ClinicRequestForm] Submitting clinic request:", {
+        adminName,
+        adminEmail,
+        userFromJWT: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+        },
+      });
+
+      const payload = {
+        ...form,
+        adminName: adminName,
+        adminEmail: adminEmail,
+      };
+
+      const res = await postClinicRequest(payload);
       setOkMsg(`Request #${res.id} submitted! Status: ${res.status}`);
       setForm({
         clinicName: "",
         address: "",
         city: "",
         phone: "",
-        adminName: "",
-        adminEmail: "",
       });
+      // Redirect to dashboard after successful submission
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 2000);
     } catch (err) {
       try {
         const body = await err.response?.json?.();
@@ -60,9 +146,19 @@ export default function ClinicRequestForm() {
       <div className="clinic-card">
         <h2 className="clinic-title">Apply your clinic</h2>
         <p className="clinic-sub">
-          Fill this form to request onboarding. We’ll review and notify you by
-          email.
+          Fill this form to request onboarding. We'll review and notify you by
+          email at <strong>{user?.email || "your registered email"}</strong>.
         </p>
+        {user && (
+          <p
+            className="clinic-sub"
+            style={{ fontSize: "14px", color: "#666", marginTop: "8px" }}
+          >
+            Request will be submitted as:{" "}
+            <strong>{user.username || user.email?.split("@")[0]}</strong> (
+            {user.email})
+          </p>
+        )}
 
         {okMsg && <div className="clinic-alert ok">{okMsg}</div>}
         {errMsg && <div className="clinic-alert err">{errMsg}</div>}
@@ -106,27 +202,6 @@ export default function ClinicRequestForm() {
             />
           </div>
 
-          <div>
-            <label className="clinic-label">Admin name *</label>
-            <input
-              className="clinic-input"
-              value={form.adminName}
-              onChange={(e) => setField("adminName", e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="clinic-label">Admin email *</label>
-            <input
-              className="clinic-input"
-              type="email"
-              value={form.adminEmail}
-              onChange={(e) => setField("adminEmail", e.target.value)}
-              required
-            />
-          </div>
-
           <div className="full">
             <button
               type="submit"
@@ -136,8 +211,8 @@ export default function ClinicRequestForm() {
               {submitting ? "Submitting…" : "Submit request"}
             </button>
             <div className="clinic-help">
-              We’ll review your request and contact you at the admin email
-              provided.
+              We'll review your request and contact you at your registered email
+              address ({user?.email || "your account email"}).
             </div>
           </div>
         </form>

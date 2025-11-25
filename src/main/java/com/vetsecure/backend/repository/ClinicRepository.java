@@ -12,4 +12,8 @@ public interface ClinicRepository extends JpaRepository<Clinic, Long> {
     List<Clinic> findByStatusAndCreatedAtAfterOrderByCreatedAtDesc(
             Clinic.Status status, Instant after
     );
+
+    List<Clinic> findByClinicAdminEmailIgnoreCase(String email);
+
+    List<Clinic> findByClinicAdminId(Long clinicAdminId);
 }

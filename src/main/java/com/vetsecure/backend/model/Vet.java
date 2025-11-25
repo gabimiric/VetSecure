@@ -1,5 +1,6 @@
 package com.vetsecure.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
@@ -15,6 +16,7 @@ public class Vet {
     private User user;
 
     @ManyToOne
+    @JsonIgnoreProperties({"vets"})
     @JoinColumn(name = "clinic_id", nullable = false)
     @NotNull(message = "Clinic is required")
     private Clinic clinic;

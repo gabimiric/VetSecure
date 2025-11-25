@@ -10,7 +10,9 @@ import Home from "./pages/home/home";
 import OwnerForm from "./components/OwnerForm";
 import PetForm from "./components/PetForm";
 import ClinicRequestForm from "./components/ClinicRequestForm";
-import AdminClinicRequests from "./components/AdminClinicRequests";
+import AdminClinicRequests from "./pages/admin/AdminClinicRequests";
+import StaffManagement from "./pages/clinic/StaffManagement";
+import AppointmentsPage from "./pages/clinic/AppointmentsPage";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
@@ -99,6 +101,22 @@ export default function App() {
             element={
               <RequireAuth roles={["ROLE_SUPER_ADMIN"]}>
                 <AdminClinicRequests />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/clinic/staff"
+            element={
+              <RequireAuth roles={["ROLE_CLINIC_ADMIN", "ROLE_SUPER_ADMIN"]}>
+                <StaffManagement />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/clinic/appointments"
+            element={
+              <RequireAuth roles={["ROLE_CLINIC_ADMIN", "ROLE_SUPER_ADMIN"]}>
+                <AppointmentsPage />
               </RequireAuth>
             }
           />

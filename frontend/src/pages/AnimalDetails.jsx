@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { AuthService } from "../services/AuthService";
+import { api } from "../services/http";
 import "../styles/animalDetails.css";
 
 export default function AnimalDetails() {
@@ -19,12 +20,9 @@ export default function AnimalDetails() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/pets/${id}`, {
-          headers: { ...AuthService.authHeader() },
-        });
-
-        if (res.ok) {
-          const p = await res.json();
+        const res = await api.get(`/pets/${id}`);
+        if (res.status === 200) {
+          const p = res.data;
           setPet(p);
           setForm({
             name: p.name || "",
@@ -70,18 +68,13 @@ export default function AnimalDetails() {
         owner: pet?.owner ? { id: pet.owner.id } : null,
       };
 
-      const res = await fetch(`/pets/${id}`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify(payload),
-      });
+      const res = await api.put(`/pets/${id}`, payload);
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "Failed to save pet");
+      if (res.status >= 400) {
+        throw new Error(res.data?.message || "Failed to save pet");
       }
 
-      const updated = await res.json();
+      const updated = res.data;
       setPet(updated);
       setEditing(false);
     } catch (err) {
@@ -97,14 +90,10 @@ export default function AnimalDetails() {
     if (!ok) return;
 
     try {
-      const res = await fetch(`/pets/${id}`, {
-        method: "DELETE",
-        headers: { ...AuthService.authHeader() },
-      });
+      const res = await api.delete(`/pets/${id}`);
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Delete failed");
+      if (res.status >= 400) {
+        throw new Error(res.data?.message || "Delete failed");
       }
 
       // go back to dashboard after deletion

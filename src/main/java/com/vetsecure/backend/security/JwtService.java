@@ -66,6 +66,7 @@ public class JwtService {
                 .addClaims(Map.of(
                         "type", "ACCESS",
                         "email", u.getEmail(),
+                        "username", u.getUsername(),
                         "role",  u.getRole().getName().name()
                 ))
                 .setIssuedAt(new Date(now))

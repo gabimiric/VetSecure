@@ -42,14 +42,32 @@ export default function Navbar() {
 
                 {/* Role-based links: Register Clinic only for clinic admin / super admin */}
                 {(roleName === "CLINIC_ADMIN" || roleName === "SUPER_ADMIN") && (
-                  <NavLink
-                    to="/register/clinic"
-                    className={({ isActive }) =>
-                      "nav-link" + (isActive ? " active" : "")
-                    }
-                  >
-                    Register Clinic
-                  </NavLink>
+                  <>
+                    <NavLink
+                      to="/register/clinic"
+                      className={({ isActive }) =>
+                        "nav-link" + (isActive ? " active" : "")
+                      }
+                    >
+                      Register Clinic
+                    </NavLink>
+                    <NavLink
+                      to="/clinic/staff"
+                      className={({ isActive }) =>
+                        "nav-link" + (isActive ? " active" : "")
+                      }
+                    >
+                      Staff
+                    </NavLink>
+                    <NavLink
+                      to="/clinic/appointments"
+                      className={({ isActive }) =>
+                        "nav-link" + (isActive ? " active" : "")
+                      }
+                    >
+                      Appointments
+                    </NavLink>
+                  </>
                 )}
 
                 {/* Admin requests only for SUPER_ADMIN */}

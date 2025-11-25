@@ -9,21 +9,35 @@ function withBase(path) {
 
 export const AuthService = {
   async getExistingRoles() {
-    try {
-      const res = await fetch(withBase("/roles"), {
-        credentials: "include",
-      });
+    const endpoints = ["/roles", "/api/roles"];
 
-      if (res.ok) {
-        const roles = await res.json();
-        console.log("Available roles:", roles);
-        return roles;
+    for (const path of endpoints) {
+      try {
+        const res = await fetch(withBase(path), {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          mode: "cors",
+        });
+
+        if (res.ok) {
+          const roles = await res.json();
+          console.log(`Available roles from ${path}:`, roles);
+          return roles;
+        }
+        console.info(`Role fetch from ${path} failed with ${res.status}`);
+      } catch (err) {
+        console.info(`Role fetch from ${path} threw:`, err.message);
+        // Continue to next endpoint
       }
-      throw new Error(`Failed to fetch roles: ${res.status}`);
-    } catch (error) {
-      console.error("Failed to fetch roles:", error);
-      throw error;
     }
+
+    // If all endpoints failed, throw a helpful error
+    throw new Error(
+      "Failed to fetch roles. Please ensure the backend server is running on http://localhost:8082"
+    );
   },
 
   async registerUser({ username, email, password, role }) {
@@ -35,9 +49,9 @@ export const AuthService = {
 
     if (!existingRole) {
       throw new Error(
-          `Role '${role}' not found in database. Available roles: ${roles
-              .map((r) => r.name)
-              .join(", ")}`
+        `Role '${role}' not found in database. Available roles: ${roles
+          .map((r) => r.name)
+          .join(", ")}`
       );
     }
 
@@ -73,7 +87,8 @@ export const AuthService = {
         let errorMsg = `Registration failed: ${res.status} ${res.statusText}`;
         try {
           const errorData = text ? JSON.parse(text) : null;
-          if (errorData) errorMsg = errorData.message || JSON.stringify(errorData);
+          if (errorData)
+            errorMsg = errorData.message || JSON.stringify(errorData);
           else errorMsg = text || errorMsg;
         } catch (e) {
           errorMsg = text || errorMsg;
@@ -117,7 +132,8 @@ export const AuthService = {
         let errorMsg = `Pet owner creation failed: ${res.status}`;
         try {
           const errorData = text ? JSON.parse(text) : null;
-          if (errorData) errorMsg = errorData.message || JSON.stringify(errorData);
+          if (errorData)
+            errorMsg = errorData.message || JSON.stringify(errorData);
           else errorMsg = text || errorMsg;
         } catch (e) {
           errorMsg = text || errorMsg;
@@ -134,15 +150,41 @@ export const AuthService = {
     }
   },
 
+  async createVet({ userId, firstName, lastName, license, clinicId, role }) {
+    const payload = {
+      user: { id: userId },
+      firstName,
+      lastName,
+      license: license || null,
+      clinic: { id: clinicId },
+      role: role || "doctor", // doctor, assistant, or clinic_admin
+    };
+
+    const res = await fetch(withBase("/vets"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => null);
+      throw new Error(txt || `Vet creation failed: ${res.status}`);
+    }
+    return res.json();
+  },
+
   async register({
-                    username,
-                    email,
-                    password,
-                    role,
-                    firstName,
-                    lastName,
-                    phone,
-                  }) {
+    username,
+    email,
+    password,
+    role,
+    firstName,
+    lastName,
+    phone,
+    license,
+    clinicId,
+  }) {
     // First, create the user with the existing role
     const user = await this.registerUser({
       username,
@@ -157,10 +199,10 @@ export const AuthService = {
       await this.login({ usernameOrEmail: email, password, remember: false });
     } catch (loginErr) {
       console.warn("Automatic login after registration failed:", loginErr);
-      // Continue: even if automatic login fails, we still attempt to create pet owner
+      // Continue: even if automatic login fails, we still attempt to create profile
     }
 
-    // If the role is PET_OWNER, create the pet owner record (authenticated)
+    // Create role-specific profile
     if (role === "PET_OWNER") {
       await this.createPetOwner({
         userId: user.id,
@@ -168,7 +210,25 @@ export const AuthService = {
         lastName,
         phone,
       });
+    } else if (role === "VET" || role === "ASSISTANT") {
+      // Only create vet profile if clinicId is provided
+      // If not provided, user can update profile later
+      if (clinicId) {
+        await this.createVet({
+          userId: user.id,
+          firstName,
+          lastName,
+          license: license || null,
+          clinicId,
+          role: role === "ASSISTANT" ? "assistant" : "doctor",
+        });
+      } else {
+        console.warn(
+          "Vet/Assistant registered without clinic - can be updated later"
+        );
+      }
     }
+    // CLINIC_ADMIN doesn't need a separate profile - they're linked via Clinic.clinicAdmin
 
     return user;
   },
@@ -203,8 +263,22 @@ export const AuthService = {
     if (data.token) {
       const storage = remember ? localStorage : sessionStorage;
       storage.setItem("access_token", data.token);
-      // Best effort: keep API compatibility for existing views expecting a user
-      const fallbackUser = { username: usernameOrEmail, email: usernameOrEmail };
+      // Extract role from JWT token if available
+      const claims = (function () {
+        try {
+          const p = data.token.split(".")[1];
+          return JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/")));
+        } catch {
+          return null;
+        }
+      })();
+      const fallbackUser = {
+        id: claims?.sub ? parseInt(claims.sub, 10) : null,
+        username:
+          claims?.username || claims?.email?.split("@")[0] || usernameOrEmail,
+        email: claims?.email || usernameOrEmail,
+        role: claims?.role || "PET_OWNER", // Extract role from JWT claims
+      };
       storage.setItem("current_user", JSON.stringify(fallbackUser));
       sessionStorage.setItem("current_user", JSON.stringify(fallbackUser));
       return { user: fallbackUser, token: data.token };
@@ -213,12 +287,25 @@ export const AuthService = {
     // Case: new JWT token response from /api/auth/login ({ token } or accessToken etc.)
     if (data.accessToken) {
       // store as before
-      localStorage.setItem('access_token', data.accessToken);
-      sessionStorage.setItem('access_token', data.accessToken);
-      const claims = (function(){ try { const p = data.accessToken.split('.')[1]; return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))) } catch { return null } })();
-      const fallbackUser = { username: claims?.email?.split('@')[0] || usernameOrEmail, email: claims?.email || usernameOrEmail };
-      sessionStorage.setItem('current_user', JSON.stringify(fallbackUser));
-      localStorage.setItem('current_user', JSON.stringify(fallbackUser));
+      localStorage.setItem("access_token", data.accessToken);
+      sessionStorage.setItem("access_token", data.accessToken);
+      const claims = (function () {
+        try {
+          const p = data.accessToken.split(".")[1];
+          return JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/")));
+        } catch {
+          return null;
+        }
+      })();
+      const fallbackUser = {
+        id: claims?.sub ? parseInt(claims.sub, 10) : null,
+        username:
+          claims?.username || claims?.email?.split("@")[0] || usernameOrEmail,
+        email: claims?.email || usernameOrEmail,
+        role: claims?.role || "PET_OWNER", // Extract role from JWT claims
+      };
+      sessionStorage.setItem("current_user", JSON.stringify(fallbackUser));
+      localStorage.setItem("current_user", JSON.stringify(fallbackUser));
       return { user: fallbackUser, token: data.accessToken };
     }
 
@@ -261,15 +348,15 @@ export const AuthService = {
 
   getToken() {
     return (
-        localStorage.getItem("access_token") ||
-        sessionStorage.getItem("access_token")
+      localStorage.getItem("access_token") ||
+      sessionStorage.getItem("access_token")
     );
   },
 
   getCurrentUser() {
     const raw =
-        sessionStorage.getItem("current_user") ||
-        localStorage.getItem("current_user");
+      sessionStorage.getItem("current_user") ||
+      localStorage.getItem("current_user");
     return raw ? JSON.parse(raw) : null;
   },
 

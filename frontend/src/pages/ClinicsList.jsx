@@ -17,11 +17,18 @@ export default function ClinicsList() {
       setLoading(true);
       // Fetch approved clinics from the backend
       const { data } = await api.get("/api/clinics");
-      setClinics(data || []);
+      const approvedOnly = Array.isArray(data)
+        ? data.filter((c) => c.status === "APPROVED")
+        : [];
+      setClinics(approvedOnly);
       setError(null);
     } catch (err) {
       console.error("Failed to fetch clinics:", err);
-      setError("Unable to load clinics. Please try again later.");
+      const msg =
+        err.response?.status === 403
+          ? "You do not have permission to view clinics. Please sign in again."
+          : "Unable to load clinics. Please try again later.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -50,9 +57,7 @@ export default function ClinicsList() {
     <div className="clinics-container" style={{ padding: "24px", maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <h1 style={{ margin: 0 }}>Available Veterinary Clinics</h1>
-        <Link to="/dashboard" className="button secondary">
-          Go to Dashboard
-        </Link>
+        
       </div>
 
       {clinics.length === 0 ? (

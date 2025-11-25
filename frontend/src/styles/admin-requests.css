@@ -62,6 +62,164 @@
   color: var(--muted);
 }
 
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 12px 0 4px;
+}
+
+.admin-stat-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #edf2ff 100%);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 6px 18px rgba(59, 91, 219, 0.08);
+}
+
+.admin-stat-label {
+  font-size: 12px;
+  color: #475569;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.admin-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.admin-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.admin-tab {
+  border: none;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+}
+
+.admin-tab.active {
+  background: #fff;
+  color: #111827;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
+}
+
+.admin-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.admin-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.admin-card-title {
+  font-weight: 800;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.admin-card-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.pill.ghost {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+.pill.pending {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
+.pill.approved {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.pill.rejected {
+  background: #fef2f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+.admin-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.admin-card-decided {
+  color: #475569;
+}
+
+.admin-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-field {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.admin-field-label {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.admin-field-value {
+  color: #0f172a;
+  font-weight: 600;
+  text-align: right;
+}
+
 .requests-list {
   display: grid;
   grid-template-columns: 1fr;

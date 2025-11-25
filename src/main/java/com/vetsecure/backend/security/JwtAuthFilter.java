@@ -66,27 +66,38 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
 
                 UserDetails ud = null;
+                System.out.println("[JwtAuthFilter] Attempting to load user by email: " + email);
                 try {
                     ud = uds.loadUserByUsername(email);
+                    System.out.println("[JwtAuthFilter] Successfully loaded user: " + (ud != null ? ud.getUsername() : "null"));
                 } catch (UsernameNotFoundException ex) {
+                    System.out.println("[JwtAuthFilter] User not found by email '" + email + "', trying by ID...");
                     // If loading by username/email failed and subject looks like a numeric userId,
                     // try resolving the user by ID and then load by their email.
                     try {
                         if (subject != null) {
                             long maybeId = Long.parseLong(subject);
+                            System.out.println("[JwtAuthFilter] Trying to find user by ID: " + maybeId);
                             java.util.Optional<User> uopt = usersRepo.findById(maybeId);
                             if (uopt.isPresent()) {
                                 String resolvedEmail = uopt.get().getEmail();
+                                System.out.println("[JwtAuthFilter] Found user by ID, email: " + resolvedEmail);
                                 ud = uds.loadUserByUsername(resolvedEmail);
+                                System.out.println("[JwtAuthFilter] Successfully loaded user by ID: " + (ud != null ? ud.getUsername() : "null"));
+                              } else {
+                                  System.err.println("[JwtAuthFilter] User not found by ID: " + maybeId);
                               }
                           }
-                      } catch (NumberFormatException | UsernameNotFoundException ignored2) {
-                          // leave ud null
+                      } catch (NumberFormatException | UsernameNotFoundException e2) {
+                          System.err.println("[JwtAuthFilter] Failed to load user by ID: " + e2.getMessage());
+                          e2.printStackTrace();
                       }
                   }
                 if (ud == null) {
-                    logger.warn("JwtAuthFilter: user not found for token subject/claim (subject='{}', email='{}')", subject, email);
-                    throw new RuntimeException("User not found for token subject/claim");
+                    logger.error("JwtAuthFilter: user not found for token subject/claim (subject='{}', email='{}')", subject, email);
+                    System.err.println("[JwtAuthFilter] ERROR: User not found for email: " + email + ", subject: " + subject);
+                    System.err.println("[JwtAuthFilter] This will cause authentication to fail and return 403!");
+                    // Don't throw - let it continue, but Spring Security will reject it
                 }
 
                 // Build authorities: include existing role authorities and map to SCOPE_* as needed
@@ -116,8 +127,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             } catch (Exception e) {
                 logger.error("JwtAuthFilter: token parsing/authentication failed", e);  // ← Log full exception
             }
-            logger.info("JwtAuthFilter: processing request to {}, Authorization header present: {}",
-                    req.getRequestURI(), auth != null);
+            logger.info("JwtAuthFilter: processing request to {}, Authorization header present: {}, Authentication set: {}",
+                    req.getRequestURI(), auth != null, 
+                    SecurityContextHolder.getContext().getAuthentication() != null);
+            System.out.println("[JwtAuthFilter] Request to: " + req.getRequestURI());
+            System.out.println("[JwtAuthFilter] Authorization header present: " + (auth != null));
+            System.out.println("[JwtAuthFilter] SecurityContext has authentication: " + 
+                (SecurityContextHolder.getContext().getAuthentication() != null));
+         } else {
+             System.out.println("[JwtAuthFilter] No Authorization header for request to: " + req.getRequestURI());
          }
          chain.doFilter(req, res);
      }

@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface ClinicRequestRepository extends JpaRepository<ClinicRequest, Long> {
     List<ClinicRequest> findByStatusOrderByIdDesc(Status status);
+    List<ClinicRequest> findByAdminEmailIgnoreCase(String adminEmail);
+    List<ClinicRequest> findByAdminNameIgnoreCase(String adminName);
 }
