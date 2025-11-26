@@ -470,13 +470,14 @@ export default function ClinicAdminDashboard() {
               <div className="section-sub">
                 Veterinarians and assistants working at your clinic
               </div>
+              <div style={{ marginTop: 18 }}>
               <Link
                 to="/clinic/staff"
                 className="po-btn-outline"
-                style={{ marginTop: 8 }}
               >
                 View All Staff →
               </Link>
+              </div>
             </div>
 
             {staff.length === 0 ? (
@@ -528,13 +529,14 @@ export default function ClinicAdminDashboard() {
               <div className="section-sub">
                 All appointments scheduled at your clinic
               </div>
+              <div style={{ marginTop: 18 }}>
               <Link
                 to="/clinic/appointments"
                 className="po-btn-outline"
-                style={{ marginTop: 8 }}
               >
                 View All Appointments →
               </Link>
+              </div>
             </div>
 
             {appointments.length === 0 ? (

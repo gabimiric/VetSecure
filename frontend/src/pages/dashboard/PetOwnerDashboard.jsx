@@ -333,14 +333,6 @@ export default function PetOwnerDashboard() {
           </div>
         )}
       </div>
-
-      {/* Dev info */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="po-dev">
-          <div>Debug — user id: {user?.id}</div>
-          <div>Pet count: {pets.length}</div>
-        </div>
-      )}
     </div>
   );
 }

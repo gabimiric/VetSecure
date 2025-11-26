@@ -20,6 +20,7 @@ import DashboardRouter from "./pages/dashboard/DashboardRouter";
 import AnimalDetails from "./pages/AnimalDetails";
 import Profile from "./pages/profile/Profile";
 import ClinicsList from "./pages/ClinicsList";
+import ClinicDetails from "./pages/clinic/ClinicDetails";
 
 import RequireAuth from "./auth/RequireAuth";
 
@@ -48,6 +49,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <ClinicsList />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/clinics/:id"
+            element={
+              <RequireAuth>
+                <ClinicDetails />
               </RequireAuth>
             }
           />

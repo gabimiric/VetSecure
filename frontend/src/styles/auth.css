@@ -3,23 +3,25 @@
 */
 
 :root {
-  --bg: #f6f8fb;
-  --card: #ffffff;
-  --muted: #6b7280;
-  --text: #0f1724;
-  --primaryA: #5b8cff;
-  --primaryB: #3b5bdb;
-  --success: #0a7a2f;
-  --danger: #b00020;
-  --radius: 14px;
-  --shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
-  --input-border: #e6e9ee;
+  --bg: #f1f4ff;
+  --card: rgba(255, 255, 255, 0.94);
+  --muted: #5f6b7b;
+  --text: #0f1629;
+  --primaryA: #6f7bf7;
+  --primaryB: #3ac2ff;
+  --success: #0ea35a;
+  --danger: #e11d48;
+  --radius: 16px;
+  --shadow: 0 18px 40px rgba(16, 24, 40, 0.1);
+  --shadow-sm: 0 14px 34px rgba(16, 24, 40, 0.08);
+  --shadow-md: 0 18px 40px rgba(15, 23, 42, 0.12);
+  --input-border: rgba(99, 115, 139, 0.18);
 }
 
 body {
-  background: linear-gradient(180deg, var(--bg), #ffffff00);
-  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
+  background: #eef2fb;
+  font-family: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
 }
 
@@ -36,13 +38,13 @@ body {
 
 /* the card */
 .auth-card {
-  width: 100%;
-  max-width: 520px;
+  width: min(500px, calc(100% - 40px));
+  max-width: 100%;
   background: var(--card);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 20px 28px;
-  border: 1px solid rgba(18, 23, 31, 0.03);
+  box-shadow: var(--shadow-md);
+  padding: 22px 28px;
+  border: 1px solid rgba(111, 123, 247, 0.2);
 }
 
 /* title */
@@ -81,7 +83,7 @@ body {
 
 .tf:focus {
   border-color: #c7d2fe;
-  box-shadow: 0 6px 24px rgba(59, 91, 219, 0.08);
+  box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
 
@@ -90,17 +92,8 @@ select.tf {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  background-image: linear-gradient(
-      45deg,
-      transparent 50%,
-      rgba(0, 0, 0, 0.12) 50%
-    ),
-    linear-gradient(135deg, rgba(0, 0, 0, 0.12) 50%, transparent 50%);
-  background-position: calc(100% - 14px) calc(1em + 2px),
-    calc(100% - 10px) calc(1em + 2px);
-  background-size: 6px 6px, 6px 6px;
-  background-repeat: no-repeat;
-  padding-right: 40px;
+  background-image: none;
+  padding-right: 12px;
 }
 
 /* checkbox row */
@@ -124,8 +117,8 @@ select.tf {
   font-weight: 800;
   color: white;
   cursor: pointer;
-  background: linear-gradient(180deg, var(--primaryA), var(--primaryB));
-  box-shadow: 0 10px 30px rgba(59, 91, 219, 0.16);
+  background: var(--primaryA);
+  box-shadow: var(--shadow-md);
   transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
 }
 

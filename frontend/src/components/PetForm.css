@@ -4,18 +4,18 @@
   min-height: calc(100vh - 80px);
   display: grid;
   place-items: center;
-  padding: 28px 16px;
-  background: var(--bg);
+  padding: 38px 16px 48px;
+  background: transparent;
 }
 
 .card {
   width: 100%;
   max-width: 720px;
-  background: var(--card);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 24px;
-  border: 1px solid rgba(18, 23, 31, 0.03);
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 18px;
+  box-shadow: var(--shadow-md);
+  padding: 26px;
+  border: 1px solid rgba(111, 123, 247, 0.18);
 }
 
 .title {
@@ -79,8 +79,8 @@
   font-weight: 700;
   color: white;
   cursor: pointer;
-  background: linear-gradient(180deg, var(--primaryA), var(--primaryB));
-  box-shadow: 0 10px 30px rgba(59, 91, 219, 0.16);
+  background: var(--primaryA);
+  box-shadow: 0 14px 30px rgba(111, 123, 247, 0.22);
 }
 
 /* messages */

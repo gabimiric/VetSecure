@@ -2,19 +2,20 @@
 
 .screen {
     min-height: 100vh;
-    background: var(--bg);
+    background: transparent;
     display: grid;
     place-items: center;
-    padding: 32px 16px;
+    padding: 40px 16px 48px;
 }
 
 .card {
     width: 100%;
     max-width: 520px;
-    background: var(--card);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 28px;
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 18px;
+    box-shadow: var(--shadow-md);
+    padding: 26px;
+    border: 1px solid rgba(111, 123, 247, 0.18);
 }
 
 .title {
@@ -46,8 +47,8 @@
     font-weight: 600;
     color: white;
     cursor: pointer;
-    background: linear-gradient(135deg, var(--primaryA), var(--primaryB));
-    box-shadow: 0 8px 18px rgba(59,91,219,.28);
+    background: var(--primaryA);
+    box-shadow: 0 14px 30px rgba(111,123,247,.24);
 }
 .primary:disabled {
     opacity: .8;

@@ -215,45 +215,44 @@ export default function AnimalDetails() {
         </div>
       </div>
 
-      {/* Details card / Edit form */}
+      {!editing && (
+        <div className="ad-keyfacts">
+          <div className="ad-fact">
+            <div className="label">Species</div>
+            <div className="value">{pet.species || "—"}</div>
+          </div>
+          <div className="ad-fact">
+            <div className="label">Breed</div>
+            <div className="value">{pet.breed || "—"}</div>
+          </div>
+          <div className="ad-fact">
+            <div className="label">Weight</div>
+            <div className="value">
+              {pet.weight ? `${pet.weight} kg` : "—"}
+            </div>
+          </div>
+          <div className="ad-fact">
+            <div className="label">Age</div>
+            <div className="value">{computeAge(pet.dateOfBirth || pet.born)}</div>
+          </div>
+        </div>
+      )}
+
       <div className="ad-card">
         {!editing ? (
-          <div className="ad-details-grid">
-            <div className="ad-row">
-              <div className="label">ID</div>
-              <div className="value">{pet.id}</div>
-            </div>
-
-            <div className="ad-row">
+          <div className="ad-details-grid ad-two-col">
+            
+            <div className="ad-block">
               <div className="label">Born</div>
               <div className="value">
                 {formatDOB(pet.dateOfBirth || pet.born)}
               </div>
             </div>
-
-            <div className="ad-row">
-              <div className="label">Species</div>
-              <div className="value">{pet.species || "—"}</div>
-            </div>
-
-            <div className="ad-row">
-              <div className="label">Breed</div>
-              <div className="value">{pet.breed || "—"}</div>
-            </div>
-
-            <div className="ad-row">
+            <div className="ad-block">
               <div className="label">Gender</div>
               <div className="value">{pet.gender || "—"}</div>
             </div>
-
-            <div className="ad-row">
-              <div className="label">Weight</div>
-              <div className="value">
-                {pet.weight ?? "—"} {pet.weight ? "kg" : ""}
-              </div>
-            </div>
-
-            <div className="ad-row">
+            <div className="ad-block">
               <div className="label">Owner</div>
               <div className="value">
                 {pet.owner?.firstName ||

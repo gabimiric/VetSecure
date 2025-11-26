@@ -97,7 +97,7 @@ export default function OwnerForm() {
             border: "none",
             color: "white",
             fontWeight: 700,
-            background: "linear-gradient(180deg,#4f46e5,#3b82f6)",
+            background: "#6f7bf7",
             cursor: "pointer",
             width: "100%",
           }}

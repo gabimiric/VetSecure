@@ -54,10 +54,31 @@ export default function ClinicsList() {
   }
 
   return (
-    <div className="clinics-container" style={{ padding: "24px", maxWidth: 1200, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ margin: 0 }}>Available Veterinary Clinics</h1>
-        
+    <div
+      className="clinics-container"
+      style={{
+        padding: "20px 16px 32px",
+        width: "100%",
+        maxWidth: "1100px",
+        margin: "0 auto",
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+          gap: 12,
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0 }}>Clinics</h1>
+          <p style={{ margin: "6px 0 0", color: "#4b5563" }}>
+            Explore approved clinics and open their details.
+          </p>
+        </div>
       </div>
 
       {clinics.length === 0 ? (
@@ -66,47 +87,80 @@ export default function ClinicsList() {
           <p style={{ color: "#999" }}>Check back later for registered veterinary clinics.</p>
         </div>
       ) : (
-        <div className="clinics-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
+        <div
+          className="clinics-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 14,
+            justifyContent: "center",
+            justifyItems: "stretch",
+          }}
+        >
           {clinics.map((clinic) => (
-            <div key={clinic.id} className="clinic-card" style={{ 
-              border: "1px solid #ddd", 
-              borderRadius: 8, 
-              padding: 20, 
-              background: "#fff",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              transition: "transform 0.2s, box-shadow 0.2s"
-            }}>
-              <h3 style={{ marginTop: 0, marginBottom: 12 }}>{clinic.name}</h3>
-              
+            <div
+              key={clinic.id}
+              className="clinic-card"
+              style={{
+                border: "1px solid rgba(15,23,42,0.08)",
+                borderRadius: 14,
+                padding: 18,
+                background: "#fff",
+                boxShadow: "0 8px 18px rgba(15,23,42,0.08)",
+                transition: "transform 0.16s, box-shadow 0.16s",
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 18 }}>{clinic.name}</h3>
+                <span style={{ fontSize: 12, color: "#4b5563" }}>#{clinic.id}</span>
+              </div>
+
               {clinic.address && (
-                <p style={{ margin: "8px 0", color: "#666", fontSize: 14 }}>
+                <p style={{ margin: 0, color: "#475569", fontSize: 14 }}>
                   📍 {clinic.address}
                 </p>
               )}
-              
-              {clinic.phone && (
-                <p style={{ margin: "8px 0", color: "#666", fontSize: 14 }}>
-                  📞 {clinic.phone}
-                </p>
-              )}
-              
-              {clinic.email && (
-                <p style={{ margin: "8px 0", color: "#666", fontSize: 14 }}>
-                  ✉️ {clinic.email}
-                </p>
-              )}
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", color: "#475569", fontSize: 13 }}>
+                {clinic.phone && <span>📞 {clinic.phone}</span>}
+                {clinic.email && <span>✉️ {clinic.email}</span>}
+              </div>
 
               {clinic.description && (
-                <p style={{ marginTop: 12, fontSize: 14, color: "#555", lineHeight: 1.5 }}>
+                <p style={{ margin: "4px 0 0", fontSize: 14, color: "#475569", lineHeight: 1.5 }}>
                   {clinic.description}
                 </p>
               )}
 
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #eee" }}>
-                <Link 
-                  to={`/clinics/${clinic.id}`} 
+              <div
+                style={{
+                  marginTop: 10,
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                }}
+              >
+                <Link
+                  to={`/clinics/${clinic.id}`}
                   className="button primary"
-                  style={{ width: "100%", textAlign: "center", display: "block", textDecoration: "none" }}
+                  style={{
+                    textAlign: "center",
+                    display: "inline-flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: 44,
+                    padding: "0 14px",
+                    borderRadius: 10,
+                    width: "100%",
+                    boxSizing: "border-box",
+                    textDecoration: "none",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    fontWeight: 800,
+                    boxShadow: "0 8px 18px rgba(111, 123, 247, 0.16)",
+                  }}
                 >
                   View Details
                 </Link>
