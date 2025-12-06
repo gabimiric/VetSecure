@@ -42,6 +42,15 @@ public class Clinic {
     @Column(name = "created_at", updatable = false, insertable = false)
     private Instant createdAt; // DB-managed timestamp
 
+    @Column(length = 1000)
+    private String description;
+
+    @Column(name = "logo_url", length = 500)
+    private String logoUrl;
+
+    @Column(name = "clinic_image_url", length = 500)
+    private String clinicImageUrl;
+
     @OneToMany(mappedBy = "clinic", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Vet> vets; // Vets working in the clinic
 
@@ -77,6 +86,15 @@ public class Clinic {
     public void setStatus(Status status) { this.status = status; }
 
     public Instant getCreatedAt() { return createdAt; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getLogoUrl() { return logoUrl; }
+    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
+
+    public String getClinicImageUrl() { return clinicImageUrl; }
+    public void setClinicImageUrl(String clinicImageUrl) { this.clinicImageUrl = clinicImageUrl; }
 
     public List<Vet> getVets() { return vets; }
     public void setVets(List<Vet> vets) { this.vets = vets; }

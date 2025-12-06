@@ -65,4 +65,24 @@ public class UserController {
     public void deleteUser(@PathVariable Long id) {
         userRepository.deleteById(id);
     }
+
+    /**
+     * Update user profile picture URL
+     * Frontend uploads image to Cloudinary first, then sends URL to this endpoint
+     */
+    @PatchMapping("/{id}/profile-picture")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+    public ResponseEntity<User> updateProfilePicture(
+            @PathVariable Long id,
+            @RequestBody UpdateProfilePictureRequest request
+    ) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setProfilePictureUrl(request.imageUrl());
+        User updatedUser = userRepository.save(user);
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    // Request DTO
+    public record UpdateProfilePictureRequest(String imageUrl) {}
 }
