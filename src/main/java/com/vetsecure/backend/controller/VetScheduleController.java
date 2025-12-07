@@ -25,7 +25,7 @@ public class VetScheduleController {
      * Create a new vet schedule
      */
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('SCOPE_CLINIC_ADMIN', 'SCOPE_SUPER_ADMIN')")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<?> createSchedule(@Valid @RequestBody ScheduleRequest request) {
         try {
             VetSchedule schedule = vetScheduleService.createSchedule(
@@ -140,4 +140,3 @@ public class VetScheduleController {
             LocalTime endTime
     ) {}
 }
-

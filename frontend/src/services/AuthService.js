@@ -105,6 +105,17 @@ export const AuthService = {
     }
   },
 
+  async deleteUser(userId) {
+    const res = await fetch(withBase(`/users/${userId}`), {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(txt || `Failed to delete user ${userId}: ${res.status}`);
+    }
+  },
+
   async createPetOwner({ userId, firstName, lastName, phone }) {
     const payload = {
       user: { id: userId },
@@ -162,7 +173,7 @@ export const AuthService = {
 
     const res = await fetch(withBase("/vets"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...this.authHeader() },
       body: JSON.stringify(payload),
       credentials: "include",
     });
@@ -170,6 +181,28 @@ export const AuthService = {
     if (!res.ok) {
       const txt = await res.text().catch(() => null);
       throw new Error(txt || `Vet creation failed: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async createVetSchedule({ vetId, weekday, startTime, endTime }) {
+    const payload = {
+      vetId,
+      weekday,
+      startTime,
+      endTime,
+    };
+
+    const res = await fetch(withBase("/vet-schedules"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...this.authHeader() },
+      body: JSON.stringify(payload),
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => null);
+      throw new Error(txt || `Vet schedule creation failed: ${res.status}`);
     }
     return res.json();
   },
@@ -184,53 +217,118 @@ export const AuthService = {
     phone,
     license,
     clinicId,
+    vetStartTime,
+    vetEndTime,
+    vetWeekdayEnd,
   }) {
-    // First, create the user with the existing role
-    const user = await this.registerUser({
-      username,
-      email,
-      password,
-      role,
-    });
+    // Frontend-side guardrails: validate before any network requests
+    const licensePattern = /^[A-Z0-9-]{5,20}$/;
+    const normalizedLicense = license ? license.trim().toUpperCase() : "";
+    const phonePattern = /^[0-9()+\\-\\s]{7,20}$/;
+    const errors = [];
 
-    // Attempt an immediate login so subsequent requests are authenticated
-    try {
-      // Call login to establish credentials (cookies / token)
-      await this.login({ usernameOrEmail: email, password, remember: false });
-    } catch (loginErr) {
-      console.warn("Automatic login after registration failed:", loginErr);
-      // Continue: even if automatic login fails, we still attempt to create profile
+    if (!username || !email || !password || !role) {
+      errors.push("Username, email, password, and role are required.");
     }
-
-    // Create role-specific profile
-    if (role === "PET_OWNER") {
-      await this.createPetOwner({
-        userId: user.id,
-        firstName,
-        lastName,
-        phone,
-      });
-    } else if (role === "VET" || role === "ASSISTANT") {
-      // Only create vet profile if clinicId is provided
-      // If not provided, user can update profile later
-      if (clinicId) {
-        await this.createVet({
-          userId: user.id,
-          firstName,
-          lastName,
-          license: license || null,
-          clinicId,
-          role: role === "ASSISTANT" ? "assistant" : "doctor",
-        });
-      } else {
-        console.warn(
-          "Vet/Assistant registered without clinic - can be updated later"
+    if (role === "VET") {
+      if (!normalizedLicense) {
+        errors.push("License number is required for vets.");
+      } else if (!licensePattern.test(normalizedLicense)) {
+        errors.push(
+          "License format is invalid. Use 5-20 characters: A-Z, 0-9, and dashes."
         );
       }
     }
-    // CLINIC_ADMIN doesn't need a separate profile - they're linked via Clinic.clinicAdmin
+    if (role === "VET" && clinicId) {
+      if (!vetStartTime || !vetEndTime) {
+        errors.push("Start and end time are required for vet schedule.");
+      } else if (vetEndTime <= vetStartTime) {
+        errors.push("End time must be after start time.");
+      }
+    }
+    if (role === "PET_OWNER" && phone) {
+      if (!phonePattern.test(phone.trim())) {
+        errors.push(
+          "Phone number is invalid. Use 7-20 digits and common symbols (+, -, space, parentheses)."
+        );
+      }
+    }
+    if (errors.length) {
+      throw new Error(errors.join(" "));
+    }
 
-    return user;
+    let createdUser = null;
+    try {
+      // First, create the user with the existing role
+      createdUser = await this.registerUser({
+        username,
+        email,
+        password,
+        role,
+      });
+
+      // Attempt an immediate login so subsequent requests are authenticated
+      try {
+        // Call login to establish credentials (cookies / token)
+        await this.login({ usernameOrEmail: email, password, remember: false });
+      } catch (loginErr) {
+        console.warn("Automatic login after registration failed:", loginErr);
+        // Continue: even if automatic login fails, we still attempt to create profile
+      }
+
+      // Create role-specific profile
+      if (role === "PET_OWNER") {
+        await this.createPetOwner({
+          userId: createdUser.id,
+          firstName,
+          lastName,
+          phone,
+        });
+      } else if (role === "VET" || role === "ASSISTANT") {
+        // Only create vet profile if clinicId is provided
+        // If not provided, user can update profile later
+        if (clinicId) {
+          const vetProfile = await this.createVet({
+            userId: createdUser.id,
+            firstName,
+            lastName,
+            license: normalizedLicense || license || null,
+            clinicId,
+            role: role === "ASSISTANT" ? "assistant" : "doctor",
+          });
+
+          // Also create an initial schedule for the vet (Monday-first UI to backend day mapping)
+          if (vetStartTime && vetEndTime) {
+            const backendWeekday = ((vetWeekdayEnd ?? 0) + 1) % 7;
+            await this.createVetSchedule({
+              vetId: vetProfile.id,
+              weekday: backendWeekday,
+              startTime: vetStartTime,
+              endTime: vetEndTime,
+            });
+          }
+        } else {
+          console.warn(
+            "Vet/Assistant registered without clinic - can be updated later"
+          );
+        }
+      }
+
+      // CLINIC_ADMIN doesn't need a separate profile - they're linked via Clinic.clinicAdmin
+
+      return createdUser;
+    } catch (err) {
+      // Cleanup base user if anything in the pipeline fails
+      if (createdUser?.id) {
+        try {
+          await this.deleteUser(createdUser.id);
+        } catch (cleanupErr) {
+          // Ignore rollback errors (likely due to missing auth); user may need manual cleanup by admin
+          console.warn("Failed to rollback user after registration error:", cleanupErr);
+        }
+      }
+      throw err;
+    }
   },
 
   async login({ usernameOrEmail, password, remember }) {

@@ -1,7 +1,8 @@
 // src/pages/dashboard/VetDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
-import { api } from "../../services/http";
+import { api, setAuthToken } from "../../services/http";
+import { AuthService } from "../../services/AuthService";
 import { Link } from "react-router-dom";
 import "../../styles/petowner.css";
 
@@ -10,10 +11,26 @@ export default function VetDashboard() {
   const [vet, setVet] = useState(null);
   const [clinic, setClinic] = useState(null);
   const [appointments, setAppointments] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [scheduleErrors, setScheduleErrors] = useState("");
+  const [savingScheduleId, setSavingScheduleId] = useState(null);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [editDraft, setEditDraft] = useState({
+    weekday: 1,
+    startTime: "",
+    endTime: "",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Ensure auth header is present for axios calls in this screen
+    const token =
+      localStorage.getItem("access_token") ||
+      sessionStorage.getItem("access_token") ||
+      localStorage.getItem("vetsecure_id_token");
+    if (token) setAuthToken(token);
+
     const loadVetData = async () => {
       if (!user?.id) {
         setLoading(false);
@@ -74,6 +91,28 @@ export default function VetDashboard() {
 
     loadVetData();
   }, [user?.id]);
+
+  // Load schedules after vet profile is available
+  useEffect(() => {
+    const loadSchedules = async () => {
+      if (!vet?.id && !user?.id) return;
+      try {
+        const vetId = vet?.id || user?.id;
+        // Fetch without auth header to avoid 403 if token is missing scopes
+        const res = await fetch(
+          `${process.env.REACT_APP_API_BASE || "http://localhost:8082"}/vet-schedules/vet/${vetId}`,
+          { mode: "cors" }
+        );
+        if (!res.ok) throw new Error(`Failed to load schedules: ${res.status}`);
+        const scheds = await res.json();
+        setSchedules(scheds);
+      } catch (err) {
+        console.warn("Failed to load schedules:", err);
+        setSchedules([]);
+      }
+    };
+    loadSchedules();
+  }, [vet?.id, user?.id]);
 
   if (loading) {
     return (
@@ -151,6 +190,167 @@ export default function VetDashboard() {
           </div>
         </div>
       )}
+
+      <div className="po-section">
+        <div className="po-section-head">
+          <h2 className="section-title">My Schedule</h2>
+          <div className="section-sub">
+            Set your working days and hours
+          </div>
+        </div>
+
+        {scheduleErrors && <div className="po-alert">{scheduleErrors}</div>}
+
+        {schedules.length === 0 ? (
+          <div className="po-empty">
+            <h3>No schedules set</h3>
+            <p className="muted">
+              Add your working days and hours to allow appointments.
+            </p>
+          </div>
+        ) : (
+          <div className="po-grid">
+            {schedules.map((s) => {
+              const weekdayLabel = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][s.weekday ?? 0];
+              const start = (s.startTime || "").slice(0,5);
+              const end = (s.endTime || "").slice(0,5);
+              const isEditing = editingScheduleId === s.id;
+              return (
+                <div key={s.id} className="po-card">
+                  <div className="po-card-body" style={{ display: "grid", gap: 10 }}>
+                    <div className="po-card-title">{weekdayLabel}</div>
+                    {!isEditing && (
+                      <>
+                        <div className="po-card-meta">
+                          <strong>{start || "--:--"} - {end || "--:--"}</strong>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button
+                            className="primary"
+                            onClick={() => {
+                              setEditingScheduleId(s.id);
+                              setEditDraft({
+                                weekday: s.weekday ?? 0,
+                                startTime: (s.startTime || "").slice(0,5),
+                                endTime: (s.endTime || "").slice(0,5),
+                              });
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </>
+                    )}
+                    {isEditing && (
+                      <>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+                          <select
+                            className="tf"
+                            value={editDraft.weekday}
+                            onChange={(e) =>
+                              setEditDraft((p) => ({
+                                ...p,
+                                weekday: Number(e.target.value),
+                              }))
+                            }
+                          >
+                            {[
+                              { label: "Sunday", value: 0 },
+                              { label: "Monday", value: 1 },
+                              { label: "Tuesday", value: 2 },
+                              { label: "Wednesday", value: 3 },
+                              { label: "Thursday", value: 4 },
+                              { label: "Friday", value: 5 },
+                              { label: "Saturday", value: 6 },
+                            ].map((d) => (
+                              <option key={d.value} value={d.value}>
+                                {d.label}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="time"
+                            className="tf"
+                            value={editDraft.startTime}
+                            onChange={(e) =>
+                              setEditDraft((p) => ({
+                                ...p,
+                                startTime: e.target.value,
+                              }))
+                            }
+                          />
+                          <input
+                            type="time"
+                            className="tf"
+                            value={editDraft.endTime}
+                            onChange={(e) =>
+                              setEditDraft((p) => ({
+                                ...p,
+                                endTime: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button
+                            className="primary"
+                            disabled={savingScheduleId === s.id}
+                            onClick={async () => {
+                              setScheduleErrors("");
+                              if (!editDraft.startTime || !editDraft.endTime) {
+                                setScheduleErrors("Start and end times are required.");
+                                return;
+                              }
+                              if (editDraft.endTime <= editDraft.startTime) {
+                                setScheduleErrors("End time must be after start time.");
+                                return;
+                              }
+                              setSavingScheduleId(s.id);
+                              try {
+                                const res = await api.put(`/vet-schedules/${s.id}`, {
+                                  weekday: editDraft.weekday,
+                                  startTime: editDraft.startTime,
+                                  endTime: editDraft.endTime,
+                                });
+                                setSchedules((prev) =>
+                                  prev.map((item) =>
+                                    item.id === s.id ? res.data : item
+                                  )
+                                );
+                                setEditingScheduleId(null);
+                              } catch (err) {
+                                console.error("Failed to update schedule:", err);
+                                setScheduleErrors(
+                                  err.response?.data?.message ||
+                                    err.message ||
+                                    "Failed to update schedule"
+                                );
+                              } finally {
+                                setSavingScheduleId(null);
+                              }
+                            }}
+                          >
+                            {savingScheduleId === s.id ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            className="po-btn-outline"
+                            onClick={() => {
+                              setEditingScheduleId(null);
+                              setEditDraft({ weekday: 1, startTime: "", endTime: "" });
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="po-section">
         <div className="po-section-head">
