@@ -45,6 +45,20 @@ public class User {
     @Column(name = "profile_picture_url", length = 500)
     private String profilePictureUrl;
 
+    /**
+     * Provider of the most recent / primary authentication method for this account.
+     * This is additive and does NOT remove or break classic password login.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false, length = 16)
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    /**
+     * Google "sub" claim (stable provider user id). Present if the account has been used with Google OAuth.
+     */
+    @Column(name = "google_sub", length = 255)
+    private String googleSub;
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -72,4 +86,10 @@ public class User {
 
     public String getProfilePictureUrl() { return profilePictureUrl; }
     public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
+
+    public AuthProvider getAuthProvider() { return authProvider; }
+    public void setAuthProvider(AuthProvider authProvider) { this.authProvider = authProvider; }
+
+    public String getGoogleSub() { return googleSub; }
+    public void setGoogleSub(String googleSub) { this.googleSub = googleSub; }
 }

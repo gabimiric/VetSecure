@@ -22,7 +22,6 @@ function parseJwt(token) {
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8082";
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -94,69 +93,6 @@ export function AuthProvider({ children }) {
     console.log("[AuthProvider] completeLogin - user set", userData);
   }, []);
 
-  const signInWithGoogle = useCallback(async (idToken) => {
-    try {
-      // Call the backend OAuth gateway to check MFA status
-      const response = await fetch(`${API_BASE}/api/auth/google/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: "Login failed" }));
-        throw new Error(error.error || "Google login failed");
-      }
-
-      const data = await response.json();
-
-      // Case 1: MFA required - store mfaToken and show dialog
-      if (data.mfaRequired) {
-        console.log("[OAuth] MFA required, showing dialog");
-        setMfaToken(data.mfaToken);
-        setMfaRequired(true);
-        return;
-      }
-
-      // Case 2: No MFA - complete login with access token
-      if (data.accessToken) {
-        const claims = parseJwt(data.accessToken);
-        const userData = {
-          ...claims,
-          id: parseInt(claims.sub, 10), // Extract user ID from 'sub' claim
-          email: claims.email,
-          username: claims.email?.split("@")[0] || "user",
-          role: claims.role || "PET_OWNER",
-        };
-
-        setToken(data.accessToken);
-        setAuthToken(data.accessToken);
-        setUser(userData);
-
-        // Store tokens
-        localStorage.setItem("vetsecure_id_token", data.accessToken);
-        localStorage.setItem("access_token", data.accessToken);
-        if (data.refreshToken) {
-          localStorage.setItem("refresh_token", data.refreshToken);
-        }
-
-        // Sync with AuthService for DashboardRouter compatibility
-        sessionStorage.setItem("access_token", data.accessToken);
-        sessionStorage.setItem("current_user", JSON.stringify(userData));
-        localStorage.setItem("current_user", JSON.stringify(userData));
-
-        console.log("[OAuth] User authenticated:", userData);
-      }
-    } catch (error) {
-      console.error("[OAuth] Login error:", error);
-      throw error; // Re-throw so LoginPage can handle it
-    }
-  }, []);
-
   const handleMfaVerified = useCallback((accessToken, refreshToken) => {
     setToken(accessToken);
     setAuthToken(accessToken);
@@ -220,7 +156,6 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!token,
       mfaRequired,
       mfaToken,
-      signInWithGoogle,
       handleMfaVerified,
       cancelMfa,
       requestMfa,
@@ -239,7 +174,6 @@ export function AuthProvider({ children }) {
       user,
       mfaRequired,
       mfaToken,
-      signInWithGoogle,
       handleMfaVerified,
       cancelMfa,
       requestMfa,

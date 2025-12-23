@@ -40,8 +40,12 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vetsecure?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC&characterEncoding=utf8
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppass
-      SPRING_PROFILES_ACTIVE: default
+      SPRING_PROFILES_ACTIVE: default,google
       SPRING_FLYWAY_ENABLED: "false"
+      # Google OAuth2 Configuration
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      APP_OAUTH2_REDIRECT_URI: "http://localhost:8080/login"
 #      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
 #      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "true"
 #      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"

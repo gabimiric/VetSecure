@@ -3,13 +3,11 @@ package com.vetsecure.backend.security;
 import com.vetsecure.backend.model.User;
 import com.vetsecure.backend.repository.UserRepository;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-@Profile("!google")
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
     private final UserRepository users;

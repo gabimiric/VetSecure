@@ -11,4 +11,18 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  # Google OAuth2 Configuration (when 'google' profile is active)
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            scope: openid,profile,email
+
+# OAuth2 redirect URI (when 'google' profile is active)
+app:
+  oauth2:
+    redirect-uri: ${APP_OAUTH2_REDIRECT_URI:http://localhost:8080/login}
 

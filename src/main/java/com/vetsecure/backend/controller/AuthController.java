@@ -4,7 +4,6 @@ import com.vetsecure.backend.model.User;
 import com.vetsecure.backend.repository.UserRepository;
 import com.vetsecure.backend.security.JwtService;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.AuthenticationException;
@@ -16,7 +15,6 @@ import java.util.Map;
 record LoginRequest(String email, String password) {}
 record TokenResponse(String token) {}                         // <-- unchanged
 record MfaChallengeResponse(boolean mfaRequired, String mfaToken, long expiresInSeconds) {}
-@Profile("!google")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

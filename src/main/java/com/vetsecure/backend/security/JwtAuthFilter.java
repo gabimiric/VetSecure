@@ -5,7 +5,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,7 +24,6 @@ import com.vetsecure.backend.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Profile("!google")
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
@@ -45,6 +43,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
 
+        // Skip OAuth2 endpoints - they are handled by OAuth2 filter chain
+        String requestPath = req.getRequestURI();
+        if (requestPath != null && (requestPath.startsWith("/oauth2/") || requestPath.startsWith("/login/oauth2/"))) {
+            chain.doFilter(req, res);
+            return;
+        }
 
         String auth = req.getHeader("Authorization");
         if (auth != null && auth.startsWith("Bearer ")) {

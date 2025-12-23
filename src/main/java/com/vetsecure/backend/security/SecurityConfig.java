@@ -2,7 +2,6 @@ package com.vetsecure.backend.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -23,21 +22,33 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.context.annotation.Lazy;
 
 import java.util.List;
 
 
 @Configuration
-@Profile("!google")
 @EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsServiceImpl uds;
+    private final com.vetsecure.backend.security.oauth2.CustomOAuth2UserService oAuth2UserService;
+    private final com.vetsecure.backend.security.oauth2.OAuth2LoginSuccessHandler oAuth2SuccessHandler;
+    private final com.vetsecure.backend.security.oauth2.OAuth2LoginFailureHandler oAuth2FailureHandler;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, UserDetailsServiceImpl uds) {
+    public SecurityConfig(
+            JwtAuthFilter jwtAuthFilter,
+            UserDetailsServiceImpl uds,
+            @Lazy com.vetsecure.backend.security.oauth2.CustomOAuth2UserService oAuth2UserService,
+            @Lazy com.vetsecure.backend.security.oauth2.OAuth2LoginSuccessHandler oAuth2SuccessHandler,
+            @Lazy com.vetsecure.backend.security.oauth2.OAuth2LoginFailureHandler oAuth2FailureHandler
+    ) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.uds = uds;
+        this.oAuth2UserService = oAuth2UserService;
+        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
+        this.oAuth2FailureHandler = oAuth2FailureHandler;
     }
 
     @Bean
@@ -45,8 +56,17 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Keep JWT endpoints stateless in practice, but OAuth2 login needs an HttpSession for state.
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                // Enable Google OAuth2 login (additive; does not change existing /api/auth/login flow)
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
+                        .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
+                        // OAuth2 endpoints must be public so Spring Security can start/finish the redirect flow
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         // —— Public endpoints (first step login, refresh, MFA second step, docs) ——
                         .requestMatchers(
                                 "/api/auth/login",
