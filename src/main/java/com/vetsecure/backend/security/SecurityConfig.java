@@ -33,6 +33,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsServiceImpl uds;
+    private final SecurityHeadersFilter securityHeadersFilter;
     private final com.vetsecure.backend.security.oauth2.CustomOAuth2UserService oAuth2UserService;
     private final com.vetsecure.backend.security.oauth2.OAuth2LoginSuccessHandler oAuth2SuccessHandler;
     private final com.vetsecure.backend.security.oauth2.OAuth2LoginFailureHandler oAuth2FailureHandler;
@@ -40,12 +41,14 @@ public class SecurityConfig {
     public SecurityConfig(
             JwtAuthFilter jwtAuthFilter,
             UserDetailsServiceImpl uds,
+            SecurityHeadersFilter securityHeadersFilter,
             @Lazy com.vetsecure.backend.security.oauth2.CustomOAuth2UserService oAuth2UserService,
             @Lazy com.vetsecure.backend.security.oauth2.OAuth2LoginSuccessHandler oAuth2SuccessHandler,
             @Lazy com.vetsecure.backend.security.oauth2.OAuth2LoginFailureHandler oAuth2FailureHandler
     ) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.uds = uds;
+        this.securityHeadersFilter = securityHeadersFilter;
         this.oAuth2UserService = oAuth2UserService;
         this.oAuth2SuccessHandler = oAuth2SuccessHandler;
         this.oAuth2FailureHandler = oAuth2FailureHandler;
@@ -56,25 +59,8 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-                // Security headers for OWASP compliance
-                .headers(headers -> headers
-                        // CSP: Content Security Policy - prevents XSS and injection attacks
-                        .contentSecurityPolicy(csp -> csp
-                                .policyDirectives(
-                                        "default-src 'self'; " +
-                                        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-                                        "style-src 'self' 'unsafe-inline'; " +
-                                        "img-src 'self' data: https:; " +
-                                        "font-src 'self' data:; " +
-                                        "connect-src 'self' http://localhost:3000 http://localhost:8080 http://127.0.0.1:3000; " +
-                                        "frame-ancestors 'none'"
-                                )
-                        )
-                        // Anti-clickjacking: X-Frame-Options - prevents embedding in iframes
-                        .frameOptions(frame -> frame.deny())
-                        // Prevent MIME type sniffing
-                        .contentTypeOptions(Customizer.withDefaults())
-                )
+                // Security headers are handled by SecurityHeadersFilter to avoid duplicates
+                .headers(headers -> headers.disable())
                 // Keep JWT endpoints stateless in practice, but OAuth2 login needs an HttpSession for state.
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 // Enable Google OAuth2 login (additive; does not change existing /api/auth/login flow)
@@ -86,6 +72,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // OAuth2 endpoints must be public so Spring Security can start/finish the redirect flow
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        // Root path - return 404 but with security headers
+                        .requestMatchers("/").permitAll()
                         // —— Public endpoints (first step login, refresh, MFA second step, docs) ——
                         .requestMatchers(
                                 "/api/auth/login",
@@ -125,6 +113,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(daoAuthProvider())
+                .addFilterBefore(securityHeadersFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

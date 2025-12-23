@@ -21,6 +21,20 @@ spring:
             client-secret: ${GOOGLE_CLIENT_SECRET:}
             scope: openid,profile,email
 
+# Server configuration for security
+#server:
+#  error:
+#    include-message: never
+#    include-binding-errors: never
+#    include-stacktrace: never
+#    include-exception: false
+#  servlet:
+#    session:
+#      cookie:
+#        secure: false  # Set to true in production with HTTPS
+#        http-only: true
+#        same-site: strict
+
 # OAuth2 redirect URI (when 'google' profile is active)
 app:
   oauth2:
