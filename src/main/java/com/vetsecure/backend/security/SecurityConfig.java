@@ -56,6 +56,25 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
+                // Security headers for OWASP compliance
+                .headers(headers -> headers
+                        // CSP: Content Security Policy - prevents XSS and injection attacks
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives(
+                                        "default-src 'self'; " +
+                                        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                                        "style-src 'self' 'unsafe-inline'; " +
+                                        "img-src 'self' data: https:; " +
+                                        "font-src 'self' data:; " +
+                                        "connect-src 'self' http://localhost:3000 http://localhost:8080 http://127.0.0.1:3000; " +
+                                        "frame-ancestors 'none'"
+                                )
+                        )
+                        // Anti-clickjacking: X-Frame-Options - prevents embedding in iframes
+                        .frameOptions(frame -> frame.deny())
+                        // Prevent MIME type sniffing
+                        .contentTypeOptions(Customizer.withDefaults())
+                )
                 // Keep JWT endpoints stateless in practice, but OAuth2 login needs an HttpSession for state.
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 // Enable Google OAuth2 login (additive; does not change existing /api/auth/login flow)
@@ -83,13 +102,24 @@ public class SecurityConfig {
                 // Allow unauthenticated clinic request submission
                 .requestMatchers(HttpMethod.POST, "/api/clinic-requests").permitAll()
                         // Allow public read of clinics (only approved should be shown client-side)
-                        .requestMatchers(HttpMethod.GET, "/api/clinics", "/api/clinics/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/clinics", "/clinics/**").permitAll()
 
                 // —— Admin endpoints ——
                 .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN","CLINIC_ADMIN")
                         
                         // —— Authenticated endpoints (require valid JWT) ——
-                        .requestMatchers("/api/clinic-requests/me").authenticated()
+                        .requestMatchers(
+                                "/api/clinic-requests/me",
+                                "/pets/**",                     // PetController - Pet management
+                                "/appointments/**",             // AppointmentController - Appointment booking/management
+                                "/vet-schedules/**",            // VetScheduleController - Vet schedules
+                                "/clinic-schedules/**",         // ClinicScheduleController - Clinic schedules
+                                "/api/owners/**",               // OwnerController - Pet owner management
+                                "/api/clinics/me/**",           // ClinicSelfController - Clinic self-management
+                                "/users/me",                    // UserController - View own profile
+                                "/users/**",                    // UserController - User management
+                                "/pet-owners/me/**"             // PetOwnerController - Pet owner self-management
+                        ).authenticated()
 
                         // —— Everything else requires auth ——
                         .anyRequest().authenticated()
