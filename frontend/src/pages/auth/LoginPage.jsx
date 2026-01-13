@@ -153,7 +153,6 @@ export default function LoginPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "100%",
             padding: "12px 16px",
             marginBottom: "16px",
             backgroundColor: "#fff",
