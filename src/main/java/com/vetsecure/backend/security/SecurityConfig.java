@@ -90,7 +90,7 @@ public class SecurityConfig {
                 // Allow unauthenticated clinic request submission
                 .requestMatchers(HttpMethod.POST, "/api/clinic-requests").permitAll()
                         // Allow public read of clinics (only approved should be shown client-side)
-                        .requestMatchers(HttpMethod.GET, "/clinics", "/clinics/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/clinics", "/clinics/**", "/api/clinics", "/api/clinics/**").permitAll()
 
                 // —— Admin endpoints ——
                 .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN","CLINIC_ADMIN")

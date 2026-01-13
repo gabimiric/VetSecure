@@ -33,7 +33,7 @@ public class Vet {
     private String license;
 
     @NotBlank(message = "Role is required")
-    @Pattern(regexp = "^(clinic_admin|assistant|doctor)$", message = "Role must be 'vet_admin', 'assistant' or 'doctor'")
+    @Pattern(regexp = "^(clinic_admin|assistant|doctor)$", message = "Role must be 'clinic_admin', 'assistant' or 'doctor'")
     private String role;
 
     // Getters and Setters
