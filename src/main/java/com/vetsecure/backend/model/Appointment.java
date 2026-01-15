@@ -14,9 +14,9 @@ public class Appointment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Optional assigned vet — allow NULL in DB / JPA so owner-created requests can be saved without a vet
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vet_id", nullable = false)
-    @NotNull(message = "Vet is required")
+    @JoinColumn(name = "vet_id", nullable = true)
     @JsonIgnoreProperties({"clinic", "user", "schedules"})
     private Vet vet;
 

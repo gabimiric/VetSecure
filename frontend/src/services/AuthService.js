@@ -239,13 +239,7 @@ export const AuthService = {
         );
       }
     }
-    if (role === "VET" && clinicId) {
-      if (!vetStartTime || !vetEndTime) {
-        errors.push("Start and end time are required for vet schedule.");
-      } else if (vetEndTime <= vetStartTime) {
-        errors.push("End time must be after start time.");
-      }
-    }
+    
     if (role === "PET_OWNER" && phone) {
       if (!phonePattern.test(phone.trim())) {
         errors.push(
@@ -297,16 +291,7 @@ export const AuthService = {
             role: role === "ASSISTANT" ? "assistant" : "doctor",
           });
 
-          // Also create an initial schedule for the vet (Monday-first UI to backend day mapping)
-          if (vetStartTime && vetEndTime) {
-            const backendWeekday = ((vetWeekdayEnd ?? 0) + 1) % 7;
-            await this.createVetSchedule({
-              vetId: vetProfile.id,
-              weekday: backendWeekday,
-              startTime: vetStartTime,
-              endTime: vetEndTime,
-            });
-          }
+          // NOTE: registration no longer creates an initial vet/assistant schedule.
         } else {
           console.warn(
             "Vet/Assistant registered without clinic - can be updated later"

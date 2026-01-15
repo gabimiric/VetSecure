@@ -25,7 +25,6 @@ export default function ClinicRequestForm() {
     setOkMsg("");
     setErrMsg("");
 
-    // Validate that user is logged in
     if (!user || !user.email) {
       setErrMsg("You must be logged in to submit a clinic request.");
       return;
@@ -33,81 +32,18 @@ export default function ClinicRequestForm() {
 
     setSubmitting(true);
     try {
-      // Fetch actual user data from backend to ensure we have the correct username from database
-      let actualUsername = user.username;
-      let actualEmail = user.email;
-
-      try {
-        const { api } = await import("../services/http");
-        // Fetch current user from backend to get the actual username from database
-        try {
-          const userRes = await api.get("/users/me");
-          if (userRes.data?.username) {
-            actualUsername = userRes.data.username;
-            console.log(
-              "[ClinicRequestForm] Fetched username from DB:",
-              actualUsername
-            );
-          }
-          if (userRes.data?.email) {
-            actualEmail = userRes.data.email;
-          }
-        } catch (err) {
-          console.warn(
-            "Could not fetch user from /users/me, trying by ID:",
-            err
-          );
-          // Fallback: try fetching by ID
-          if (user.id) {
-            try {
-              const userRes = await api.get(`/users/${user.id}`);
-              if (userRes.data) {
-                // Handle both direct user object and Optional<User> wrapper
-                const userData = userRes.data.username
-                  ? userRes.data
-                  : userRes.data;
-                if (userData.username) {
-                  actualUsername = userData.username;
-                  console.log(
-                    "[ClinicRequestForm] Fetched username from DB by ID:",
-                    actualUsername
-                  );
-                }
-                if (userData.email) {
-                  actualEmail = userData.email;
-                }
-              }
-            } catch (err2) {
-              console.warn(
-                "Could not fetch user by ID either, using JWT data:",
-                err2
-              );
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch user data, using JWT data:", err);
-      }
-
-      // Use the actual username from database, fallback to JWT username, then email prefix
-      const adminName =
-        actualUsername || user.username || user.email?.split("@")[0] || "Admin";
-      const adminEmail = actualEmail || user.email;
-
-      console.log("[ClinicRequestForm] Submitting clinic request:", {
-        adminName,
-        adminEmail,
-        userFromJWT: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-        },
-      });
+      // resolve adminName/adminEmail as before
+      const adminName = user.username || user.email?.split("@")[0] || "Admin";
+      const adminEmail = user.email;
 
       const payload = {
-        ...form,
-        adminName: adminName,
-        adminEmail: adminEmail,
+        clinicName: form.clinicName,
+        address: form.address,
+        city: form.city,
+        phone: form.phone,
+        adminName,
+        adminEmail,
+        // schedules and description intentionally omitted to match ClinicRequest model
       };
 
       const res = await postClinicRequest(payload);
@@ -118,24 +54,11 @@ export default function ClinicRequestForm() {
         city: "",
         phone: "",
       });
-      // Redirect to dashboard after successful submission
       setTimeout(() => {
         window.location.href = "/dashboard";
-      }, 2000);
+      }, 1200);
     } catch (err) {
-      try {
-        const body = await err.response?.json?.();
-        if (body?.error === "validation_failed" && body.fields) {
-          const first = Object.entries(body.fields)[0];
-          setErrMsg(`${first[0]}: ${first[1]}`);
-        } else if (body?.error) {
-          setErrMsg(String(body.error));
-        } else {
-          setErrMsg(err.message || "Failed to submit.");
-        }
-      } catch {
-        setErrMsg(err.message || "Failed to submit.");
-      }
+      setErrMsg(err.response?.data?.message || err.message || "Failed to submit.");
     } finally {
       setSubmitting(false);
     }

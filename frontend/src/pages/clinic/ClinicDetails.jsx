@@ -1,249 +1,134 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { api } from "../../services/http";
-import { useAuth } from "../../auth/AuthProvider";
-import "../../styles/clinic.css";
+import React from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import client from "../../api/client";
+
+const cardStyle = {
+  maxWidth: 960,
+  margin: "20px auto",
+  padding: 20,
+  borderRadius: 8,
+  boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+  background: "#fff",
+  fontFamily: "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+};
+
+const headerStyle = { display: "flex", justifyContent: "space-between", alignItems: "center" };
+const metaStyle = { color: "#6b7280", marginTop: 6 };
 
 export default function ClinicDetails() {
   const { id } = useParams();
+  const [clinic, setClinic] = React.useState(null);
+  const [schedules, setSchedules] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [err, setErr] = React.useState(null);
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const roleName = user?.role?.name || user?.role || "";
 
-  const [clinic, setClinic] = useState(null);
-  const [form, setForm] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  const canEdit =
-    roleName === "SUPER_ADMIN" ||
-    roleName === "CLINIC_ADMIN" ||
-    roleName === "ROLE_SUPER_ADMIN" ||
-    roleName === "ROLE_CLINIC_ADMIN";
-
-  useEffect(() => {
-    const load = async () => {
+  React.useEffect(() => {
+    async function load() {
       setLoading(true);
-      setError(null);
+      setErr(null);
       try {
-        if (canEdit) {
-          try {
-            const res = await api.get(`/api/clinics/${id}`);
-            setClinic(res.data);
-            setForm({
-              name: res.data?.name || "",
-              address: res.data?.address || "",
-              city: res.data?.city || "",
-              phone: res.data?.phone || "",
-              email: res.data?.email || "",
-              description: res.data?.description || "",
-            });
-            return;
-          } catch (err) {
-            if (err?.response?.status !== 403) throw err;
-            // fall through to read-only if admin call forbidden
-          }
-        }
+        const cRes = await client.get(`/api/clinics/${id}`);
+        setClinic(cRes.data);
+      } catch (e) {
+        console.error("[ClinicDetails] GET /api/clinics/" + id + " failed:", e);
+        setErr(e);
+      }
 
-        // Read-only path for non-admin roles: rely on approved clinics list
-        const listRes = await api.get("/api/clinics");
-        const approved = Array.isArray(listRes.data)
-          ? listRes.data.filter((c) => c.status === "APPROVED")
-          : [];
-        const found = approved.find((c) => `${c.id}` === `${id}`);
-        if (!found) {
-          setError("Clinic not found or not approved yet.");
-          setClinic(null);
-          return;
-        }
-        setClinic(found);
-        setForm({
-          name: found?.name || "",
-          address: found?.address || "",
-          city: found?.city || "",
-          phone: found?.phone || "",
-          email: found?.email || "",
-          description: found?.description || "",
-        });
-      } catch (err) {
-        console.error(err);
-        setError("Unable to load clinic details.");
+      try {
+        const sRes = await client.get(`/api/clinics/${id}/schedules`);
+        setSchedules(Array.isArray(sRes.data) ? sRes.data : []);
+      } catch (e) {
+        console.warn("[ClinicDetails] GET /api/clinics/" + id + "/schedules ->", e);
+        setSchedules([]);
       } finally {
         setLoading(false);
       }
-    };
+    }
     load();
   }, [id]);
 
-  const onChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const save = async (e) => {
-    e.preventDefault();
-    if (!canEdit) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await api.put(`/api/clinics/${id}`, form);
-      setClinic(res.data);
-      setForm({
-        name: res.data?.name || "",
-        address: res.data?.address || "",
-        city: res.data?.city || "",
-        phone: res.data?.phone || "",
-        email: res.data?.email || "",
-        description: res.data?.description || "",
-      });
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || "Failed to save clinic.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="clinic-screen">
-        <div className="clinic-card">Loading clinic...</div>
-      </div>
-    );
+  const weekdayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  function formatTime(t) {
+    if (!t) return "-";
+    return t.length >= 5 ? t.slice(0,5) : t;
   }
 
-  if (!clinic) {
+  const renderSchedule = () => {
+    if (!schedules || schedules.length === 0) return <div style={{color:"#6b7280"}}>No schedule defined.</div>;
     return (
-      <div className="clinic-screen">
-        <div className="clinic-card">
-          <h2>Clinic not found</h2>
-          <p className="clinic-sub">We could not find that clinic.</p>
-          <Link to="/clinics" className="ad-btn-outline">
-            Back to list
-          </Link>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, background:"#f8fafc", padding:8, borderRadius:6 }}>
+          <div style={{ fontWeight:700 }}>Day</div>
+          <div style={{ fontWeight:700 }}>Open</div>
+          <div style={{ fontWeight:700 }}>Close</div>
+        </div>
+        <div>
+          {schedules
+            .slice()
+            .sort((a,b)=> (a.weekday||0)-(b.weekday||0))
+            .map(r => (
+              <div key={r.id} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, padding:"10px 8px", borderBottom:"1px solid #eef2f7" }}>
+                <div>{weekdayNames[(r.weekday||1)-1] || `Day ${r.weekday}`}</div>
+                <div>{formatTime(r.openTime)}</div>
+                <div>{formatTime(r.closeTime)}</div>
+              </div>
+            ))
+          }
         </div>
       </div>
     );
-  }
+  };
+
+  const formatError = (e) => {
+    if (!e) return null;
+    if (typeof e === "string") return e;
+    if (e?.message) return e.message;
+    try { return JSON.stringify(e); } catch { return String(e); }
+  };
 
   return (
-    <div className="clinic-screen">
-      <div className="clinic-card">
-        <div className="ad-header" style={{ paddingBottom: 0, borderBottom: "none" }}>
-          <div className="ad-title-wrap">
-            <h1 className="clinic-title">{clinic.name}</h1>
-            <div className="clinic-sub">
-              {clinic.address || "No address provided"}
-              {clinic.city ? `, ${clinic.city}` : ""}
+    <div style={{ padding: 20 }}>
+      <div style={cardStyle}>
+        {loading ? (
+          <div>Loading…</div>
+        ) : err ? (
+          <div style={{ color: "#c2410c" }}>Error loading clinic: {formatError(err)}</div>
+        ) : clinic ? (
+          <>
+            <div style={headerStyle}>
+              <div>
+                <h1 style={{ margin: 0 }}>{clinic.name}</h1>
+                <div style={metaStyle}>{clinic.address}{clinic.city ? ` • ${clinic.city}` : ""}</div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <button
+                  type="button"
+                  className="po-btn"
+                  style={{ marginRight: 8, textDecoration: "none" }}
+                  onClick={() => navigate(`/appointments/new?clinicId=${clinic.id}`)}
+                >
+                  Request appointment
+                </button>
+                <div style={{ fontWeight:700 }}>{clinic.status}</div>
+                <div style={{ color:"#6b7280", fontSize:14 }}>{clinic.email}</div>
+              </div>
             </div>
-          </div>
-          <div className="ad-header-right">
-            <Link to="/clinics" className="ad-btn-outline">
-              Back
-            </Link>
-          </div>
-        </div>
 
-        {error && (
-          <div className="clinic-alert err" style={{ marginTop: 12 }}>
-            {error}
-          </div>
-        )}
+            {clinic.description ? (
+              <section style={{ marginTop: 18 }}>
+                <h3 style={{ marginBottom:6 }}>About</h3>
+                <p style={{ color:"#374151", lineHeight:1.6 }}>{clinic.description}</p>
+              </section>
+            ) : null}
 
-        <div className="ad-keyfacts" style={{ margin: "12px 0 16px" }}>
-          <div className="ad-fact">
-            <div className="label">Phone</div>
-            <div className="value">{clinic.phone || "—"}</div>
-          </div>
-          <div className="ad-fact">
-            <div className="label">Email</div>
-            <div className="value">{clinic.email || "—"}</div>
-          </div>
-          <div className="ad-fact">
-            <div className="label">Status</div>
-            <div className="value">{clinic.status || "—"}</div>
-          </div>
-          <div className="ad-fact">
-            <div className="label">Admin</div>
-            <div className="value">
-              {clinic.clinicAdmin?.username || clinic.clinicAdminId || "—"}
-            </div>
-          </div>
-        </div>
-
-        {canEdit ? (
-          <form className="clinic-form" onSubmit={save}>
-            <label className="clinic-label full">
-              Name
-              <input
-                className="clinic-input"
-                name="name"
-                value={form.name}
-                onChange={onChange}
-                required
-              />
-            </label>
-            <label className="clinic-label full">
-              Address
-              <input
-                className="clinic-input"
-                name="address"
-                value={form.address}
-                onChange={onChange}
-              />
-            </label>
-            <label className="clinic-label">
-              City
-              <input
-                className="clinic-input"
-                name="city"
-                value={form.city}
-                onChange={onChange}
-              />
-            </label>
-            <label className="clinic-label">
-              Phone
-              <input
-                className="clinic-input"
-                name="phone"
-                value={form.phone}
-                onChange={onChange}
-              />
-            </label>
-            <label className="clinic-label full">
-              Email
-              <input
-                className="clinic-input"
-                name="email"
-                value={form.email}
-                onChange={onChange}
-              />
-            </label>
-            <label className="clinic-label full">
-              Description
-              <textarea
-                className="clinic-input"
-                name="description"
-                value={form.description}
-                onChange={onChange}
-                rows={3}
-              />
-            </label>
-
-            <button
-              type="submit"
-              className="clinic-submit"
-              disabled={saving}
-              style={{ marginTop: 8 }}
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
-          </form>
+            <section style={{ marginTop: 18 }}>
+              <h3 style={{ marginBottom:6 }}>Opening Hours</h3>
+              {renderSchedule()}
+            </section>
+          </>
         ) : (
-          <div className="clinic-alert ok" style={{ marginTop: 12 }}>
-            You can only make appointments to the clinic.
-          </div>
+          <div>No clinic found.</div>
         )}
       </div>
     </div>

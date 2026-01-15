@@ -1,67 +1,85 @@
 package com.vetsecure.backend.repository;
 
 import com.vetsecure.backend.model.Appointment;
-import com.vetsecure.backend.model.Appointment.AppointmentStatus;
-import com.vetsecure.backend.model.Vet;
-import com.vetsecure.backend.model.Pet;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
+import java.util.List;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 
-@Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    // Find all appointments for a specific vet
-    List<Appointment> findByVet(Vet vet);
-
-    // Find all appointments for a specific vet by vet ID
-    List<Appointment> findByVetId(Long vetId);
-
-    // Find all appointments for a specific pet
-    List<Appointment> findByPet(Pet pet);
-
-    // Find all appointments for a specific pet by pet ID
-    List<Appointment> findByPetId(Long petId);
-
-    // Find appointments by status
-    List<Appointment> findByStatus(AppointmentStatus status);
-
-    // Find appointments by vet and date
-    List<Appointment> findByVetIdAndDate(Long vetId, LocalDate date);
-
-    // Find appointments by pet and date
-    List<Appointment> findByPetIdAndDate(Long petId, LocalDate date);
-
-    // Find appointments by vet, date, and status
-    List<Appointment> findByVetIdAndDateAndStatus(Long vetId, LocalDate date, AppointmentStatus status);
-
-    // Find appointments by pet owner
-    @Query("SELECT a FROM Appointment a WHERE a.pet.owner.id = :ownerId")
+    // fetch joins to load pet + owner + vet (+ vet.clinic) to avoid LazyInitialization / Jackson issues
+    @Query("select a from Appointment a " +
+           "join fetch a.pet p " +
+           "join fetch p.owner o " +
+           "left join fetch a.vet v " +
+           "left join fetch v.clinic c " +
+           "where o.id = :ownerId")
     List<Appointment> findByPetOwnerId(@Param("ownerId") Long ownerId);
 
-    // Find appointments by clinic (through vet)
-    @Query("SELECT a FROM Appointment a WHERE a.vet.clinic.id = :clinicId")
+    // fallback: fetch all appointments with related pet/owner/vet info for safe serialization
+    @Query("select a from Appointment a " +
+           "left join fetch a.pet p " +
+           "left join fetch p.owner o " +
+           "left join fetch a.vet v " +
+           "left join fetch v.clinic c")
+    List<Appointment> findAllWithFetch();
+
+    // --- Added methods expected by AppointmentService ---
+
+    @Query("select a from Appointment a " +
+           "left join fetch a.pet p " +
+           "left join fetch p.owner o " +
+           "left join fetch a.vet v " +
+           "left join fetch v.clinic c " +
+           "where v.id = :vetId")
+    List<Appointment> findByVetId(@Param("vetId") Long vetId);
+
+    @Query("select a from Appointment a " +
+           "left join fetch a.pet p " +
+           "left join fetch p.owner o " +
+           "left join fetch a.vet v " +
+           "left join fetch v.clinic c " +
+           "where p.id = :petId")
+    List<Appointment> findByPetId(@Param("petId") Long petId);
+
+    @Query("select a from Appointment a " +
+           "left join fetch a.pet p " +
+           "left join fetch p.owner o " +
+           "left join fetch a.vet v " +
+           "left join fetch v.clinic c " +
+           "where v.clinic.id = :clinicId")
     List<Appointment> findByClinicId(@Param("clinicId") Long clinicId);
 
-    // Find appointments by vet and date range
-    @Query("SELECT a FROM Appointment a WHERE a.vet.id = :vetId AND a.date BETWEEN :startDate AND :endDate")
-    List<Appointment> findByVetIdAndDateBetween(
-        @Param("vetId") Long vetId,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate
-    );
+    @Query("select a from Appointment a " +
+           "left join fetch a.pet p " +
+           "left join fetch p.owner o " +
+           "left join fetch a.vet v " +
+           "left join fetch v.clinic c " +
+           "where v.id = :vetId and a.date = :date")
+    List<Appointment> findByVetIdAndDate(@Param("vetId") Long vetId, @Param("date") LocalDate date);
 
-    // Check if a vet has a conflicting appointment at a specific date and time
-    @Query("SELECT COUNT(a) > 0 FROM Appointment a WHERE a.vet.id = :vetId AND a.date = :date AND a.time = :time AND a.status != 'CANCELLED'")
-    boolean existsByVetIdAndDateAndTimeAndStatusNot(
-        @Param("vetId") Long vetId,
-        @Param("date") LocalDate date,
-        @Param("time") LocalTime time
-    );
+    @Query("select a from Appointment a " +
+           "left join fetch a.pet p " +
+           "left join fetch p.owner o " +
+           "left join fetch a.vet v " +
+           "left join fetch v.clinic c " +
+           "where v.id = :vetId and a.date between :from and :to")
+    List<Appointment> findByVetIdAndDateBetween(@Param("vetId") Long vetId,
+                                                @Param("from") LocalDate from,
+                                                @Param("to") LocalDate to);
+
+    /**
+     * Check if there exists a non-cancelled appointment for the vet at the same date/time.
+     * The service called expects a method named like this; implement with a JPQL query that
+     * treats "CANCELLED" as the excluded status (status stored as STRING in DB).
+     */
+    @Query("select case when count(a) > 0 then true else false end from Appointment a " +
+           "where a.vet.id = :vetId and a.date = :date and a.time = :time and a.status <> 'CANCELLED'")
+    boolean existsByVetIdAndDateAndTimeAndStatusNot(@Param("vetId") Long vetId,
+                                                    @Param("date") LocalDate date,
+                                                    @Param("time") LocalTime time);
 }
 

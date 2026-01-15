@@ -18,9 +18,6 @@ export default function RegisterPage() {
     phone: "",
     license: "", // for VET
     clinicId: "", // for VET and ASSISTANT
-    vetStartTime: "", // for VET schedule
-    vetEndTime: "", // for VET schedule
-    vetWeekdayEnd: "0", // monday-first index for last working day
   });
   const [status, setStatus] = useState(null);
   const navigate = useNavigate();
@@ -102,16 +99,6 @@ export default function RegisterPage() {
     const phonePattern = /^[0-9()+\\-\\s]{7,20}$/;
 
     if (isVet && form.clinicId) {
-      if (!form.vetStartTime || !form.vetEndTime) {
-        setStatus("error");
-        setErrorMsg("Please provide start and end time for the vet schedule.");
-        return;
-      }
-      if (form.vetEndTime <= form.vetStartTime) {
-        setStatus("error");
-        setErrorMsg("End time must be after start time.");
-        return;
-      }
       if (!licensePattern.test(normalizedLicense)) {
         setStatus("error");
         setErrorMsg(
@@ -143,9 +130,6 @@ export default function RegisterPage() {
         phone: form.phone,
         license: normalizedLicense || form.license,
         clinicId: form.clinicId ? Number(form.clinicId) : null,
-        vetStartTime: form.vetStartTime,
-        vetEndTime: form.vetEndTime,
-        vetWeekdayEnd: Number(form.vetWeekdayEnd),
       });
 
       // Attempt an immediate login so subsequent requests are authenticated
@@ -334,65 +318,7 @@ export default function RegisterPage() {
               </label>
             )}
 
-            {isVet && form.clinicId && (
-              <div className="label">
-                <div style={{ marginBottom: 8, fontWeight: 600 }}>
-                  Working days & hours *
-                </div>
-                <div style={{ marginBottom: 8, fontSize: 14, color: "#444" }}>
-                  Starts Monday. Select the last working day and the daily start/end time.
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                  {weekdayLabels.map((day, idx) => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => setForm((p) => ({ ...p, vetWeekdayEnd: String(idx) }))}
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        border:
-                          form.vetWeekdayEnd === String(idx)
-                            ? "2px solid #2d6cdf"
-                            : "1px solid #d0d7de",
-                        background:
-                          form.vetWeekdayEnd === String(idx) ? "#e8f0fe" : "#fff",
-                        color: "#111",
-                        cursor: "pointer",
-                        fontSize: 13,
-                        minWidth: 90,
-                      }}
-                    >
-                      Mon – {day}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                  <label className="label" style={{ marginBottom: 0 }}>
-                    Start time *
-                    <input
-                      type="time"
-                      name="vetStartTime"
-                      value={form.vetStartTime}
-                      onChange={onChange}
-                      className="tf"
-                      required
-                    />
-                  </label>
-                  <label className="label" style={{ marginBottom: 0 }}>
-                    End time *
-                    <input
-                      type="time"
-                      name="vetEndTime"
-                      value={form.vetEndTime}
-                      onChange={onChange}
-                      className="tf"
-                      required
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
+           
           </>
         )}
 

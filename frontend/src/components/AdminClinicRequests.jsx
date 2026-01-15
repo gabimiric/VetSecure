@@ -1,6 +1,7 @@
 // src/pages/admin/AdminClinicRequests.jsx
 import React, { useEffect, useState } from "react";
 import { AuthService } from "../services/AuthService";
+import { Link } from "react-router-dom";
 import "../styles/admin-requests.css";
 
 export default function AdminClinicRequests() {
@@ -40,8 +41,6 @@ export default function AdminClinicRequests() {
   }
 
   async function setRequestStatus(id, status) {
-    // Example: PUT /admin/clinic-requests/{id} with body { status: "APPROVED" }
-    // If your backend uses a different route, update it here.
     setActionLoading(id);
     try {
       const res = await fetch(`/admin/clinic-requests/${id}`, {
@@ -58,7 +57,6 @@ export default function AdminClinicRequests() {
         throw new Error(txt || `Failed to update: ${res.status}`);
       }
 
-      // optimistic update
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       console.error(err);
@@ -70,6 +68,14 @@ export default function AdminClinicRequests() {
 
   const approveRequest = (id) => setRequestStatus(id, "APPROVED");
   const rejectRequest = (id) => setRequestStatus(id, "REJECTED");
+
+  function formatScheduleRow(s) {
+    // s: { weekday: number, openTime: "HH:mm", closeTime: "HH:mm" }
+    const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    if (!s) return "";
+    const day = s.weekday != null ? DAYS[Number(s.weekday)] : "?";
+    return `${day} ${s.openTime || "?"}–${s.closeTime || "?"}`;
+  }
 
   return (
     <div className="admin-requests-screen">
@@ -97,7 +103,18 @@ export default function AdminClinicRequests() {
             {requests.map((r) => (
               <div key={r.id} className="request-card">
                 <div className="request-main">
-                  <div className="request-title">{r.clinicName}</div>
+                  <div className="request-title">
+                    { (r.clinicId || r.clinic?.id || r.id) ? (
+                      <Link
+                        to={`/clinics/${r.clinicId || r.clinic?.id || r.id}`}
+                        style={{ textDecoration: "none", color: "inherit", fontWeight: 700 }}
+                      >
+                        {r.clinicName || r.clinic?.name || "Clinic"}
+                      </Link>
+                    ) : (
+                      r.clinicName
+                    )}
+                  </div>
                   <div className="request-meta muted">
                     {r.city ? `${r.city} • ` : ""}
                     {r.address || "Address not provided"}
@@ -112,6 +129,20 @@ export default function AdminClinicRequests() {
                     <div>
                       <strong>Phone:</strong> {r.phone || "—"}
                     </div>
+
+                    {/* Display schedules if present */}
+                    {r.schedules && r.schedules.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <strong>Schedule:</strong>
+                        <ul style={{ margin: "6px 0 0 14px", padding: 0 }}>
+                          {r.schedules.map((s, i) => (
+                            <li key={i} style={{ listStyle: "disc", marginBottom: 2 }}>
+                              {formatScheduleRow(s)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
 

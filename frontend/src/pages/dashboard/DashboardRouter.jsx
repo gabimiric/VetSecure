@@ -1,38 +1,46 @@
 // src/pages/dashboard/DashboardRouter.jsx
 import React from "react";
 import { useAuth } from "../../auth/AuthProvider";
-import PetOwnerDashboard from "./PetOwnerDashboard";
 import ClinicAdminDashboard from "./ClinicAdminDashboard";
+import SuperAdminDashboard from "../admin/AdminClinicRequests";
+import PetOwnerDashboard from "./PetOwnerDashboard";
 import VetDashboard from "./VetDashboard";
 import AssistantDashboard from "./AssistantDashboard";
-import { Navigate } from "react-router-dom";
 
 export default function DashboardRouter() {
   const { user } = useAuth();
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  const roles = React.useMemo(() => {
+    if (!user) return [];
+    if (Array.isArray(user.roles)) return user.roles.map((r) => (r?.name || r)).filter(Boolean);
+    if (user.role) return [user.role?.name || user.role].filter(Boolean);
+    return [];
+  }, [user]);
+
+  React.useEffect(() => {
+    console.debug("DashboardRouter user:", user);
+    console.debug("DashboardRouter resolved roles:", roles);
+  }, [user, roles]);
+
+  // Precedence: CLINIC_ADMIN first, then SUPER_ADMIN, then others
+  if (roles.includes("CLINIC_ADMIN") || roles.includes("ROLE_CLINIC_ADMIN")) {
+    return <ClinicAdminDashboard />;
   }
 
-  // Handle both role object and role string formats
-  // Also check JWT claims for role
-  const roleName =
-    user.role?.name || user.role || user.roles?.[0] || "PET_OWNER";
+  if (roles.includes("SUPER_ADMIN") || roles.includes("ROLE_SUPER_ADMIN")) {
+    // use AdminClinicRequests as the Super Admin dashboard per request
+    return <SuperAdminDashboard />;
+  }
 
-  console.log("User role:", roleName, "Full user:", user); // Debug log
+  const roleName = roles[0] || "PET_OWNER";
 
   switch (roleName) {
     case "PET_OWNER":
       return <PetOwnerDashboard />;
-    case "CLINIC_ADMIN":
-      return <ClinicAdminDashboard />;
     case "VET":
       return <VetDashboard />;
     case "ASSISTANT":
       return <AssistantDashboard />;
-    case "SUPER_ADMIN":
-      // Redirect to admin requests page
-      return <Navigate to="/admin/requests" replace />;
     default:
       return (
         <div style={{ padding: 24 }}>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { api } from "../../services/http";
 import "../../styles/petowner.css";
@@ -11,6 +11,8 @@ export default function PetOwnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [petOwnerData, setPetOwnerData] = useState(null);
   const [error, setError] = useState(null);
+  const [appointments, setAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -100,6 +102,58 @@ export default function PetOwnerDashboard() {
     loadDashboardData();
   }, [user]);
 
+  // load appointments for current pet owner
+  useEffect(() => {
+    if (!user || !user.id) {
+      setAppointments([]);
+      return;
+    }
+
+    let mounted = true;
+    async function loadAppointments() {
+      setAppointmentsLoading(true);
+      try {
+        // try owner-scoped endpoint first
+        const res = await api.get(`/api/appointments/owner/${user.id}`);
+        let list = Array.isArray(res.data) ? res.data : [];
+
+        // If backend returned empty, fallback: fetch all appointments and filter by pet ids
+        if (!list || list.length === 0) {
+          const petIds = (pets || []).map((p) => p.id).filter(Boolean);
+          if (petIds.length > 0) {
+            const allRes = await api.get("/api/appointments");
+            const all = Array.isArray(allRes.data) ? allRes.data : [];
+            list = all.filter((a) => a.pet && petIds.includes(a.pet.id));
+          } else {
+            list = [];
+          }
+        }
+
+        if (!mounted) return;
+        setAppointments(list);
+      } catch (e) {
+        // final fallback: try GET /api/appointments and filter by pet ids
+        try {
+          const allRes = await api.get("/api/appointments");
+          const all = Array.isArray(allRes.data) ? allRes.data : [];
+          const petIds = (pets || []).map((p) => p.id).filter(Boolean);
+          const list = all.filter((a) => a.pet && petIds.includes(a.pet.id));
+          if (mounted) setAppointments(list);
+        } catch (ee) {
+          console.info("failed to load appointments:", e?.response?.status || e.message);
+          if (mounted) setAppointments([]);
+        }
+      } finally {
+        if (mounted) setAppointmentsLoading(false);
+      }
+    }
+
+    loadAppointments();
+    return () => {
+      mounted = false;
+    };
+  }, [user, pets]);
+
   const handleLogout = () => {
     signOut();
     // signOut() will handle navigation
@@ -177,21 +231,30 @@ export default function PetOwnerDashboard() {
   }
 
   return (
-    <div className="po-container">
-      {/* Header */}
+    <div className="po-page">
       <div className="po-header">
-        <div className="po-header-left">
-          <div className="po-avatar">{initials}</div>
-          <div>
-            <h1 className="po-title">Welcome back, {displayName}</h1>
-            <div className="po-subtitle">Your Pet Owner Dashboard</div>
-          </div>
+        <div>
+          <h1 className="po-title">Welcome back, {displayName}</h1>
+          <div className="po-subtitle">Your Pet Owner Dashboard</div>
         </div>
 
         <div className="po-header-right">
-          <Link to="/profile" className="po-btn-outline">
+          <button
+            type="button"
+            className="po-btn"
+            style={{ marginRight: 8 }}
+            onClick={() => navigate("/appointments/new")}
+          >
+            Request appointment
+          </button>
+
+          <button
+            type="button"
+            className="po-btn-outline"
+            onClick={() => navigate("/profile")}
+          >
             Profile
-          </Link>
+          </button>
 
           <Link to="/register/pet" className="po-add-btn" title="Add pet">
             <svg
@@ -330,6 +393,62 @@ export default function PetOwnerDashboard() {
                 </div>
               </Link>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Appointments section */}
+      <div className="po-section">
+        <div className="po-section-head">
+          <h2 className="section-title">My Appointments</h2>
+          <div className="section-sub">Upcoming and past appointments for your pets</div>
+        </div>
+
+        {appointmentsLoading ? (
+          <div className="po-empty">
+            <h3>Loading…</h3>
+          </div>
+        ) : appointments.length === 0 ? (
+          <div className="po-empty">
+            <h3>No appointments</h3>
+            <p className="muted">You don't have any appointments scheduled.</p>
+          </div>
+        ) : (
+          <div className="po-grid">
+            {appointments.map((apt) => {
+              const dateStr = apt.date ? String(apt.date) : null;
+              const timeStr = apt.time ? String(apt.time).slice(0,5) : null;
+              const startsAt = dateStr && timeStr ? new Date(`${dateStr}T${timeStr}`) : null;
+              return (
+                <div key={apt.id} className="po-card">
+                  <div className="po-card-body">
+                    <div className="po-card-title">{apt.pet?.name || "Unknown Pet"}</div>
+                    <div className="po-card-meta">
+                      <span>{startsAt ? startsAt.toLocaleString() : "TBD"}</span>
+                      {apt.vet && (
+                        <>
+                          <span className="dot">•</span>
+                          <span>Dr. {apt.vet.firstName} {apt.vet.lastName}</span>
+                        </>
+                      )}
+                    </div>
+                    {apt.reason && <div style={{ marginTop: 8, color: "#374151" }}>{apt.reason}</div>}
+                    <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontSize: 13, color: "#6b7280" }}>{apt.status}</div>
+                      <div>
+                        <button
+                          type="button"
+                          className="po-btn-outline"
+                          onClick={() => navigate(`/appointments/${apt.id}`)}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

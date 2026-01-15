@@ -1,13 +1,13 @@
 package com.vetsecure.backend.repository;
 
-import com.vetsecure.backend.model.ClinicSchedule;
-import com.vetsecure.backend.model.Clinic;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.vetsecure.backend.model.ClinicSchedule;
+import com.vetsecure.backend.model.Clinic;
+
 public interface ClinicScheduleRepository extends JpaRepository<ClinicSchedule, Long> {
 
     // Find all schedules for a specific clinic
@@ -21,5 +21,9 @@ public interface ClinicScheduleRepository extends JpaRepository<ClinicSchedule, 
 
     // Find schedule by clinic ID and weekday
     List<ClinicSchedule> findByClinicIdAndWeekday(Long clinicId, Byte weekday);
+
+    // remove schedules for a clinic (used when replacing)
+    @Transactional
+    void deleteByClinicId(Long clinicId);
 }
 

@@ -29,6 +29,11 @@ public class VetScheduleService {
      */
     @Transactional
     public VetSchedule createSchedule(Long vetId, Byte weekday, LocalTime startTime, LocalTime endTime) {
+        // If start/end time are not provided, do not create a schedule (backwards-compatibility for registration)
+        if (startTime == null || endTime == null) {
+            return null;
+        }
+
         // Validate vet exists
         Vet vet = vetRepository.findById(vetId)
                 .orElseThrow(() -> new IllegalArgumentException("Vet not found with ID: " + vetId));

@@ -5,18 +5,20 @@ import com.vetsecure.backend.model.PetOwner;
 import com.vetsecure.backend.repository.PetOwnerRepository;
 import com.vetsecure.backend.repository.PetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 
+import java.lang.reflect.Method;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.springframework.http.ResponseEntity;
 
 @RestController
-@RequestMapping("/pets")
+@RequestMapping("/api/pets")
 public class PetController {
 
     @Autowired
@@ -33,10 +35,48 @@ public class PetController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_pets:read')")
-    public ResponseEntity<Pet> getPet(@PathVariable Long id) {
+    public ResponseEntity<?> getPet(@PathVariable Long id) {
         Optional<Pet> pet = petRepository.findById(id);
-        return pet.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        if (pet.isEmpty()) return ResponseEntity.notFound().build();
+        pet = petRepository.findById(id);
+
+        // Build a minimal map of pet fields (no owner)
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", reflectiveGet(pet, "getId", "id"));
+        m.put("name", reflectiveGet(pet, "getName", "name"));
+        m.put("species", reflectiveGet(pet, "getSpecies", "species"));
+        m.put("breed", reflectiveGet(pet, "getBreed", "breed"));
+        m.put("sex", reflectiveGet(pet, "getSex", "sex"));
+        m.put("age", reflectiveGet(pet, "getAge", "age"));
+        m.put("microchip", reflectiveGet(pet, "getMicrochip", "microchip"));
+        m.put("dateOfBirth", reflectiveGet(pet, "getDateOfBirth", "getBorn", "born", "dateOfBirth"));
+
+        return ResponseEntity.ok(m);
+    }
+
+    private static Object reflectiveGet(Object target, String... candidateNames) {
+        if (target == null || candidateNames == null) return null;
+        Class<?> cls = target.getClass();
+        for (String name : candidateNames) {
+            try {
+                // try zero-arg method first
+                Method m = cls.getMethod(name);
+                if (m != null) {
+                    return m.invoke(target);
+                }
+            } catch (NoSuchMethodException ignored) {
+                // try field access getter style fallback via method with "get" prefix if not provided
+                try {
+                    String alt = name;
+                    if (!name.startsWith("get")) alt = "get" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+                    Method m2 = cls.getMethod(alt);
+                    if (m2 != null) return m2.invoke(target);
+                } catch (Throwable ignored2) {
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
     }
 
     @PostMapping

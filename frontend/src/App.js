@@ -21,6 +21,7 @@ import AnimalDetails from "./pages/AnimalDetails";
 import Profile from "./pages/profile/Profile";
 import ClinicsList from "./pages/ClinicsList";
 import ClinicDetails from "./pages/clinic/ClinicDetails";
+import NewAppointmentPage from "./pages/appointments/NewAppointment";
 
 import RequireAuth from "./auth/RequireAuth";
 
@@ -66,6 +67,15 @@ export default function App() {
             element={
               <RequireAuth>
                 <DashboardRouter />
+              </RequireAuth>
+            }
+          />
+
+          <Route
+            path="/appointments/new"
+            element={
+              <RequireAuth>
+                <NewAppointmentPage />
               </RequireAuth>
             }
           />

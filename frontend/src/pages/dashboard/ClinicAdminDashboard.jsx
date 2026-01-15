@@ -2,8 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
 import { api } from "../../services/http";
-import { Link } from "react-router-dom";
+import { postClinicRequest } from "../../api/client";
+import { Link, useNavigate } from "react-router-dom";
 import "../../styles/petowner.css";
+import client from "../../api/client";
 
 // Two-column layout style
 const twoColumnStyle = {
@@ -14,18 +16,37 @@ const twoColumnStyle = {
 };
 
 export default function ClinicAdminDashboard() {
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
+
+  const [clinic, setClinic] = React.useState(null);
+  const [schedules, setSchedules] = React.useState([]);
+  const [clinicRequests, setClinicRequests] = useState([]);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [staff, setStaff] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+
+  // DEBUG: log user to confirm role/flags
+  React.useEffect(() => {
+    console.log("DEBUG ClinicAdminDashboard user:", user);
+  }, [user]);
+
+  // detect clinic-admin role robustly (support either single role string or roles array)
+  const isClinicAdmin = React.useMemo(() => {
+    if (!user) return false;
+    // adjust these to whatever your backend returns: role / roles / authorities / isClinicAdmin
+    if (user.role) return user.role === "CLINIC_ADMIN" || user.role === "ROLE_CLINIC_ADMIN";
+    if (Array.isArray(user.roles)) return user.roles.includes("CLINIC_ADMIN") || user.roles.includes("ROLE_CLINIC_ADMIN");
+    if (Array.isArray(user.authorities)) return user.authorities.some(a => a.authority?.includes('CLINIC_ADMIN') || a === 'SCOPE_CLINIC_ADMIN');
+    return !!user.isClinicAdmin;
+  }, [user]);
 
   const handleLogout = () => {
     signOut();
     // signOut() will handle navigation
   };
-  const [clinic, setClinic] = useState(null);
-  const [clinicRequests, setClinicRequests] = useState([]);
-  const [staff, setStaff] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadClinicData = async () => {
@@ -222,12 +243,22 @@ export default function ClinicAdminDashboard() {
         }));
 
         const combinedRequests =
-          clinicRequestsFromClinics.length > 0
-            ? clinicRequestsFromClinics
-            : userRequests;
-        setClinicRequests(combinedRequests);
+          clinicRequestsFromClinics.length > 0 ? clinicRequestsFromClinics : userRequests;
 
-        if (combinedRequests.length === 0) {
+        // FILTER: only show requests owned by current admin
+        const ownerFilteredRequests = combinedRequests.filter((r) => {
+          if (!user) return false;
+          return (
+            r.clinicAdminId === user.id ||
+            r.clinicAdmin?.id === user.id ||
+            r.adminEmail === user.email ||
+            r.adminEmail === user.username
+          );
+        });
+
+        setClinicRequests(ownerFilteredRequests);
+
+        if (ownerFilteredRequests.length === 0) {
           console.warn(
             "[ClinicAdminDashboard] WARNING: No requests found! Check backend logs."
           );
@@ -266,6 +297,76 @@ export default function ClinicAdminDashboard() {
     loadClinicData();
   }, [user]);
 
+  useEffect(() => {
+    async function loadClinic() {
+      setLoading(true);
+      try {
+        // Ensure the default client has the Authorization header set (client is default axios instance)
+        if (!client.defaults.headers?.common?.Authorization) {
+          const t =
+            localStorage.getItem("vetsecure_id_token") ||
+            localStorage.getItem("access_token") ||
+            sessionStorage.getItem("access_token");
+          if (t) client.defaults.headers.common["Authorization"] = `Bearer ${t}`;
+        }
+
+        const res = await client.get("/api/clinics/me");
+        // support both single clinic or array
+        const data = Array.isArray(res.data) ? res.data[0] : res.data;
+        setClinic(data);
+        if (data && data.id) {
+          try {
+            const sres = await client.get(`/api/clinics/${data.id}/schedules`);
+            setSchedules(sres.data || []);
+          } catch (e) {
+            console.warn("ClinicAdminDashboard: schedule fetch failed", e);
+          }
+        }
+      } catch (e) {
+        console.error("ClinicAdminDashboard: load error", e);
+        setError(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadClinic();
+  }, [user]);
+
+  const formatError = (e) => {
+    if (!e) return null;
+    if (typeof e === "string") return e;
+    if (e?.message) return e.message;
+    try { return JSON.stringify(e); } catch { return String(e); }
+  };
+
+  function renderSchedules() {
+    if (!clinic) return null;
+    if (!schedules || schedules.length === 0) return <div style={{color:"#6b7280"}}>No schedule defined.</div>;
+    const weekdayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    return (
+      <div style={{ borderRadius:8, padding:12, background:"#fff", boxShadow:"0 6px 18px rgba(0,0,0,0.04)" }}>
+        <table style={{ width:"100%", borderCollapse:"collapse" }}>
+          <thead>
+            <tr style={{ background:"#f8fafc" }}>
+              <th style={{ textAlign:"left", padding:8 }}>Day</th>
+              <th style={{ textAlign:"left", padding:8 }}>Open</th>
+              <th style={{ textAlign:"left", padding:8 }}>Close</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schedules.slice().sort((a,b)=> (a.weekday||0)-(b.weekday||0)).map(s => (
+              <tr key={s.id}>
+                <td style={{ padding:8 }}>{weekdayNames[(s.weekday||1)-1] || `Day ${s.weekday}`}</td>
+                <td style={{ padding:8 }}>{(s.openTime||"")?.toString?.().slice?.(0,5) ?? s.openTime}</td>
+                <td style={{ padding:8 }}>{(s.closeTime||"")?.toString?.().slice?.(0,5) ?? s.closeTime}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="po-container">
@@ -292,15 +393,43 @@ export default function ClinicAdminDashboard() {
           <Link to="/profile" className="po-btn-outline">
             Profile
           </Link>
+
+          {/* Register Clinic button for clinic admins */}
+          {isClinicAdmin && (
+            <button
+              className="po-btn-outline"
+              onClick={() => setShowRequestForm(true)}
+              style={{ marginRight: 8 }}
+            >
+              Register Clinic
+            </button>
+          )}
+
           <button onClick={handleLogout} className="po-logout">
             Logout
           </button>
         </div>
       </div>
 
+      {/* Render clinic request form when requested */}
+      {showRequestForm && (
+        <div style={{ marginTop: 12 }}>
+          <ClinicRequestForm
+            onCreated={(saved) => {
+              // insert new request at top and close form
+              setClinicRequests((prev) => [saved, ...(prev || [])]);
+              // If backend immediately created a clinic record, show it
+              if (saved?.clinic) setClinic(saved.clinic);
+              setShowRequestForm(false);
+            }}
+            onCancel={() => setShowRequestForm(false)}
+          />
+        </div>
+      )}
+
       {error && (
         <div className="po-alert">
-          {error}
+          {formatError(error)}
           <button
             className="po-alert-action"
             onClick={() => window.location.reload()}
@@ -713,9 +842,7 @@ export default function ClinicAdminDashboard() {
               <div className="section-sub">
                 Your clinic registration requests
               </div>
-              <Link to="/register/clinic" className="po-btn-outline margin-top">
-                Register New Clinic
-              </Link>
+              
             </div>
 
             {/* Debug info - remove in production */}
@@ -871,3 +998,116 @@ export default function ClinicAdminDashboard() {
     </div>
   );
 }
+
+function ClinicRequestForm({ onCreated, onCancel }) {
+  const { user } = useAuth();
+  const [clinicName, setClinicName] = React.useState("");
+  const [address, setAddress] = React.useState("");
+  const [city, setCity] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [adminName, setAdminName] = React.useState("");
+  const [adminEmail, setAdminEmail] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (user) {
+      setAdminEmail(user.email || user.username || "");
+      setAdminName(user.name || user.username || "");
+    }
+  }, [user]);
+
+  const submit = async () => {
+    if (!clinicName) { alert("Clinic name required"); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        clinicName,
+        address,
+        city,
+        phone,
+        adminName,
+        adminEmail: adminEmail || (user?.email || user?.username),
+      };
+
+      const res = await postClinicRequest(payload);
+      const saved = res;
+      onCreated && onCreated(saved);
+
+      setClinicName("");
+      setAddress("");
+      setCity("");
+      setPhone("");
+      setAdminName(user?.name || "");
+      setAdminEmail(user?.email || user?.username || "");
+      alert(`Clinic request submitted (id: ${saved?.id || "?"})`);
+    } catch (err) {
+      console.error("Failed to create clinic request:", err);
+      alert(err.response?.data?.message || err.message || "Failed to create");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="po-card">
+      <div className="po-card-body">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3>Create Clinic Request</h3>
+          <div>
+            <button className="po-btn-outline" onClick={onCancel} style={{ marginRight: 8 }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        <input
+          className="tf"
+          placeholder="Clinic name"
+          value={clinicName}
+          onChange={(e) => setClinicName(e.target.value)}
+        />
+        <input
+          className="tf"
+          placeholder="Address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+        <input
+          className="tf"
+          placeholder="City"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+        />
+        <input
+          className="tf"
+          placeholder="Phone"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <input
+          className="tf"
+          placeholder="Admin name"
+          value={adminName}
+          onChange={(e) => setAdminName(e.target.value)}
+        />
+        <input
+          className="tf"
+          placeholder="Admin email"
+          value={adminEmail}
+          onChange={(e) => setAdminEmail(e.target.value)}
+        />
+
+        <div style={{ marginTop: 12 }}>
+          <button className="primary" onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : "Submit Request"}
+          </button>
+          <button className="po-btn-outline" onClick={onCancel} style={{ marginLeft: 8 }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { ClinicRequestForm };

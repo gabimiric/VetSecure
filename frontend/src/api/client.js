@@ -1,8 +1,10 @@
 // src/api/client.js
 
-// --- Public: submit a clinic request ---
+import axios from "axios";
+
 const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8082";
 
+// --- Public: submit a clinic request ---
 export async function postClinicRequest(payload) {
   const token =
     localStorage.getItem("vetsecure_id_token") ||
@@ -57,3 +59,13 @@ export async function rejectClinicRequest(id, decidedBy = "admin") {
   if (!res.ok) throw new Error(await res.text());
   return res.text().catch(() => "");
 }
+
+// Add a default axios client so other modules can `import client from "../../api/client"`
+const client = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+export default client;
