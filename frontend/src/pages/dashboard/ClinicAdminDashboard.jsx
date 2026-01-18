@@ -28,6 +28,12 @@ export default function ClinicAdminDashboard() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
 
+  // schedule editing state
+  const [editingScheduleIndex, setEditingScheduleIndex] = useState(null);
+  const [scheduleDraft, setScheduleDraft] = useState({ weekday: 1, openTime: "09:00", closeTime: "17:00" });
+  const [savingSchedules, setSavingSchedules] = useState(false);
+  const [schedulesError, setSchedulesError] = useState(null);
+
   // DEBUG: log user to confirm role/flags
   React.useEffect(() => {
     console.log("DEBUG ClinicAdminDashboard user:", user);
@@ -45,16 +51,11 @@ export default function ClinicAdminDashboard() {
 
   const handleLogout = () => {
     signOut();
-    // signOut() will handle navigation
   };
 
   useEffect(() => {
     const loadClinicData = async () => {
-      console.log("[ClinicAdminDashboard] useEffect triggered, user:", user);
-
-      // Don't require user.id - we can still load requests with email/username
       if (!user) {
-        console.warn("[ClinicAdminDashboard] No user object, skipping load");
         setLoading(false);
         return;
       }
@@ -63,171 +64,38 @@ export default function ClinicAdminDashboard() {
       setError(null);
 
       try {
-        // Always try to load clinic requests to show all requests
+        // load clinic requests (kept as-is)
         let userRequests = [];
         let userRequest = null;
         try {
-          console.log(
-            "[ClinicAdminDashboard] ===== Fetching clinic requests ====="
-          );
-          console.log("[ClinicAdminDashboard] User object:", {
-            id: user?.id,
-            email: user?.email,
-            username: user?.username,
-          });
-
-          // Check if token is set
-          const token =
-            localStorage.getItem("vetsecure_id_token") ||
-            localStorage.getItem("access_token") ||
-            sessionStorage.getItem("access_token");
-          console.log("[ClinicAdminDashboard] Auth token present:", !!token);
-          console.log(
-            "[ClinicAdminDashboard] API base URL:",
-            api.defaults.baseURL
-          );
-          console.log(
-            "[ClinicAdminDashboard] API headers:",
-            api.defaults.headers
-          );
-          console.log(
-            "[ClinicAdminDashboard] Authorization header:",
-            api.defaults.headers?.common?.Authorization
-          );
-
-          // Ensure Authorization header is set
-          if (!api.defaults.headers?.common?.Authorization) {
-            console.warn(
-              "[ClinicAdminDashboard] No Authorization header found, setting it..."
-            );
-            const token =
-              localStorage.getItem("vetsecure_id_token") ||
-              localStorage.getItem("access_token") ||
-              sessionStorage.getItem("access_token");
-            if (token) {
-              api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-              console.log(
-                "[ClinicAdminDashboard] Manually set Authorization header"
-              );
-            } else {
-              console.error("[ClinicAdminDashboard] ERROR: No token found!");
-            }
-          }
-
-          console.log(
-            "[ClinicAdminDashboard] Making API call to /api/clinic-requests/me"
-          );
           const requestsRes = await api.get("/api/clinic-requests/me");
-
-          console.log("[ClinicAdminDashboard] ===== API RESPONSE =====");
-          console.log(
-            "[ClinicAdminDashboard] Full Response Object:",
-            requestsRes
-          );
-          console.log(
-            "[ClinicAdminDashboard] Response Status:",
-            requestsRes.status
-          );
-          console.log(
-            "[ClinicAdminDashboard] Response Headers:",
-            requestsRes.headers
-          );
-          console.log(
-            "[ClinicAdminDashboard] Response Data:",
-            requestsRes.data
-          );
-          console.log(
-            "[ClinicAdminDashboard] Response Data Type:",
-            typeof requestsRes.data
-          );
-          console.log(
-            "[ClinicAdminDashboard] Is Array?",
-            Array.isArray(requestsRes.data)
-          );
-          console.log(
-            "[ClinicAdminDashboard] Data Length:",
-            Array.isArray(requestsRes.data) ? requestsRes.data.length : "N/A"
-          );
-
-          // Handle different response formats
-          if (Array.isArray(requestsRes.data)) {
-            userRequests = requestsRes.data;
-          } else if (requestsRes.data && Array.isArray(requestsRes.data.data)) {
-            // Sometimes axios wraps it
-            userRequests = requestsRes.data.data;
-          } else if (requestsRes.data && requestsRes.data.items) {
-            userRequests = requestsRes.data.items;
-          } else {
-            userRequests = [];
-          }
-
-          console.log(
-            "[ClinicAdminDashboard] Final parsed requests:",
-            userRequests
-          );
-          console.log(
-            "[ClinicAdminDashboard] Number of requests:",
-            userRequests.length
-          );
-          console.log("[ClinicAdminDashboard] User email:", user?.email);
-          console.log("[ClinicAdminDashboard] User username:", user?.username);
-          console.log("[ClinicAdminDashboard] ===== END API RESPONSE =====");
-
-          // Store all requests
-          // defer setting clinicRequests until we also load clinics below
-
-          // Get the most recent pending request, or the most recent one for single display
-          userRequest =
-            userRequests.find((r) => r.status === "PENDING") || userRequests[0];
-          if (userRequest) {
-            console.log(
-              "[ClinicAdminDashboard] Selected request:",
-              userRequest
-            );
-          }
+          if (Array.isArray(requestsRes.data)) userRequests = requestsRes.data;
+          else if (requestsRes.data?.data) userRequests = requestsRes.data.data;
+          else if (requestsRes.data?.items) userRequests = requestsRes.data.items;
+          else userRequests = [];
+          userRequest = userRequests.find((r) => r.status === "PENDING") || userRequests[0];
         } catch (err) {
-          console.error("===== ERROR loading clinic requests =====");
-          console.error("Error object:", err);
-          console.error("Error message:", err.message);
-          console.error("Error response:", err.response);
-          console.error("Error response data:", err.response?.data);
-          console.error("Error response status:", err.response?.status);
-          console.error("Error response headers:", err.response?.headers);
-          console.error("Request config:", err.config);
-          console.error("==========================================");
-          setClinicRequests([]);
-          setError(
-            "Failed to load clinic requests: " +
-              (err.response?.data?.message || err.message || "Unknown error")
-          );
+          console.warn("Failed to load clinic requests:", err);
+          userRequests = [];
         }
 
         // Try to find clinic where this user is the admin
         let userClinic = null;
         let myClinics = [];
 
-        // Preferred source: clinics table linked to this admin
         try {
           const myClinicsRes = await api.get("/api/clinics/me");
           myClinics = Array.isArray(myClinicsRes.data) ? myClinicsRes.data : [];
-          // Pick approved clinic first, otherwise any entry
-          userClinic =
-            myClinics.find((c) => c.status === "APPROVED") || myClinics[0];
+          userClinic = myClinics.find((c) => c.status === "APPROVED") || myClinics[0];
         } catch (err) {
           console.warn("Failed to load clinics for current admin:", err);
         }
 
-        // Fallback: previous admin endpoint (requires role)
         try {
           if (!userClinic) {
             const clinicsRes = await api.get("/api/admin/clinics");
-            const clinics = Array.isArray(clinicsRes.data)
-              ? clinicsRes.data
-              : [];
-            userClinic = clinics.find(
-              (c) =>
-                c.clinicAdmin?.id === user.id || c.clinicAdminId === user.id
-            );
+            const clinics = Array.isArray(clinicsRes.data) ? clinicsRes.data : [];
+            userClinic = clinics.find((c) => c.clinicAdmin?.id === user.id || c.clinicAdminId === user.id);
             myClinics = clinics;
           }
         } catch (err) {
@@ -241,11 +109,8 @@ export default function ClinicAdminDashboard() {
           decidedAt: c.createdAt,
           decidedBy: c.clinicAdminEmail,
         }));
+        const combinedRequests = clinicRequestsFromClinics.length > 0 ? clinicRequestsFromClinics : userRequests;
 
-        const combinedRequests =
-          clinicRequestsFromClinics.length > 0 ? clinicRequestsFromClinics : userRequests;
-
-        // FILTER: only show requests owned by current admin
         const ownerFilteredRequests = combinedRequests.filter((r) => {
           if (!user) return false;
           return (
@@ -258,16 +123,10 @@ export default function ClinicAdminDashboard() {
 
         setClinicRequests(ownerFilteredRequests);
 
-        if (ownerFilteredRequests.length === 0) {
-          console.warn(
-            "[ClinicAdminDashboard] WARNING: No requests found! Check backend logs."
-          );
-        }
-
         if (userClinic) {
           setClinic(userClinic);
 
-          // Load staff (vets and assistants) for this clinic
+          // Load staff (vets) for this clinic
           try {
             const vetsRes = await api.get("/vets");
             const allVets = Array.isArray(vetsRes.data) ? vetsRes.data : [];
@@ -281,9 +140,7 @@ export default function ClinicAdminDashboard() {
             setStaff([]);
           }
 
-          // Load appointments for this clinic
-          // Note: Appointment model/endpoint not yet implemented in backend
-          // When available, use: api.get(`/api/appointments/clinic/${userClinic.id}`)
+          // Load appointments (kept empty if backend not present)
           setAppointments([]);
         }
       } catch (err) {
@@ -297,11 +154,11 @@ export default function ClinicAdminDashboard() {
     loadClinicData();
   }, [user]);
 
+  // load clinic and schedules with separate client (retains behavior)
   useEffect(() => {
     async function loadClinic() {
       setLoading(true);
       try {
-        // Ensure the default client has the Authorization header set (client is default axios instance)
         if (!client.defaults.headers?.common?.Authorization) {
           const t =
             localStorage.getItem("vetsecure_id_token") ||
@@ -311,15 +168,15 @@ export default function ClinicAdminDashboard() {
         }
 
         const res = await client.get("/api/clinics/me");
-        // support both single clinic or array
         const data = Array.isArray(res.data) ? res.data[0] : res.data;
         setClinic(data);
         if (data && data.id) {
           try {
             const sres = await client.get(`/api/clinics/${data.id}/schedules`);
-            setSchedules(sres.data || []);
+            setSchedules(Array.isArray(sres.data) ? sres.data : []);
           } catch (e) {
             console.warn("ClinicAdminDashboard: schedule fetch failed", e);
+            setSchedules([]);
           }
         }
       } catch (e) {
@@ -339,9 +196,95 @@ export default function ClinicAdminDashboard() {
     try { return JSON.stringify(e); } catch { return String(e); }
   };
 
+  // SCHEDULE UI / CRUD helpers
+  function startEditSchedule(index) {
+    const s = schedules[index] || { weekday: 1, openTime: "09:00", closeTime: "17:00" };
+    setEditingScheduleIndex(index);
+    setScheduleDraft({
+      weekday: Number(s.weekday || 1),
+      openTime: s.openTime || s.startTime || "09:00",
+      closeTime: s.closeTime || s.endTime || "17:00",
+    });
+    setSchedulesError(null);
+  }
+
+  function cancelEditSchedule() {
+    setEditingScheduleIndex(null);
+    setScheduleDraft({ weekday: 1, openTime: "09:00", closeTime: "17:00" });
+    setSchedulesError(null);
+  }
+
+  function updateScheduleDraft(field, value) {
+    setScheduleDraft(d => ({ ...d, [field]: value }));
+  }
+
+  function addScheduleRow() {
+    setSchedules(s => [...(s || []), { id: `tmp-${Date.now()}`, weekday: Number(scheduleDraft.weekday || 1), openTime: scheduleDraft.openTime, closeTime: scheduleDraft.closeTime }]);
+    // reset draft
+    setScheduleDraft({ weekday: 1, openTime: "09:00", closeTime: "17:00" });
+  }
+
+  function updateScheduleRow(index) {
+    setSchedules(s => (s || []).map((it, i) => i === index ? { ...it, weekday: Number(scheduleDraft.weekday), openTime: scheduleDraft.openTime, closeTime: scheduleDraft.closeTime } : it));
+    cancelEditSchedule();
+  }
+
+  function removeScheduleRow(index) {
+    if (typeof window === "undefined" || !window.confirm("Remove this schedule?")) return;
+    setSchedules(s => (s || []).filter((_, i) => i !== index));
+  }
+
+  async function saveSchedules() {
+    if (!clinic?.id) {
+      setSchedulesError("No clinic selected");
+      return;
+    }
+    setSavingSchedules(true);
+    setSchedulesError(null);
+
+    try {
+      // Normalize payload to backend ScheduleDto expected by admin replace endpoint
+      const payload = (schedules || []).map((s) => ({
+        weekday: Number(s.weekday || s.day || 1),
+        openTime: s.openTime || s.startTime || s.open || null,
+        closeTime: s.closeTime || s.endTime || s.close || null,
+      }));
+
+      // Use the admin replace endpoint (server deletes existing and saves the new list)
+      // Backend controller: AdminClinicController.replaceSchedules -> /api/admin/clinics/{id}/schedules
+      const res = await api.put(`/api/admin/clinics/${clinic.id}/schedules`, payload);
+
+      // refresh from server source-of-truth (server returns saved schedules)
+      const fresh = await api.get(`/api/clinics/${clinic.id}/schedules`);
+      setSchedules(Array.isArray(fresh.data) ? fresh.data : (Array.isArray(res.data) ? res.data : payload));
+      setSchedulesError(null);
+      alert("Schedules saved");
+    } catch (err) {
+      console.error("Failed to save schedules:", err);
+      setSchedulesError(
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to save schedules"
+      );
+    } finally {
+      setSavingSchedules(false);
+      cancelEditSchedule();
+    }
+  }
+
   function renderSchedules() {
     if (!clinic) return null;
-    if (!schedules || schedules.length === 0) return <div style={{color:"#6b7280"}}>No schedule defined.</div>;
+    if (!schedules || schedules.length === 0) {
+      return (
+        <div>
+          <div style={{color:"#6b7280"}}>No schedule defined.</div>
+          <div style={{ marginTop: 8 }}>
+            <small>Add a schedule below and click "Save schedules".</small>
+          </div>
+        </div>
+      );
+    }
     const weekdayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
     return (
       <div style={{ borderRadius:8, padding:12, background:"#fff", boxShadow:"0 6px 18px rgba(0,0,0,0.04)" }}>
@@ -351,14 +294,23 @@ export default function ClinicAdminDashboard() {
               <th style={{ textAlign:"left", padding:8 }}>Day</th>
               <th style={{ textAlign:"left", padding:8 }}>Open</th>
               <th style={{ textAlign:"left", padding:8 }}>Close</th>
+              <th style={{ textAlign:"right", padding:8 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {schedules.slice().sort((a,b)=> (a.weekday||0)-(b.weekday||0)).map(s => (
-              <tr key={s.id}>
-                <td style={{ padding:8 }}>{weekdayNames[(s.weekday||1)-1] || `Day ${s.weekday}`}</td>
-                <td style={{ padding:8 }}>{(s.openTime||"")?.toString?.().slice?.(0,5) ?? s.openTime}</td>
-                <td style={{ padding:8 }}>{(s.closeTime||"")?.toString?.().slice?.(0,5) ?? s.closeTime}</td>
+            {schedules.slice().sort((a,b)=> (Number(a.weekday||1))-(Number(b.weekday||1))).map((s, idx) => (
+              <tr key={s.id || `r-${idx}`}>
+                <td style={{ padding:8 }}>
+                  {weekdayNames[(Number(s.weekday||1)-1 + 7) % 7] || `Day ${s.weekday}`}
+                </td>
+                <td style={{ padding:8 }}>{(s.openTime||s.startTime||"")?.toString?.().slice?.(0,5) ?? s.openTime}</td>
+                <td style={{ padding:8 }}>{(s.closeTime||s.endTime||"")?.toString?.().slice?.(0,5) ?? s.closeTime}</td>
+                <td style={{ padding:8, textAlign:"right" }}>
+                  <button className="po-btn-outline" onClick={() => startEditSchedule(idx)} style={{ marginRight: 8 }}>
+                    Edit
+                  </button>
+                  <button className="po-btn-outline" onClick={() => removeScheduleRow(idx)}>Remove</button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -394,7 +346,6 @@ export default function ClinicAdminDashboard() {
             Profile
           </Link>
 
-          {/* Register Clinic button for clinic admins */}
           {isClinicAdmin && (
             <button
               className="po-btn-outline"
@@ -411,14 +362,11 @@ export default function ClinicAdminDashboard() {
         </div>
       </div>
 
-      {/* Render clinic request form when requested */}
       {showRequestForm && (
         <div style={{ marginTop: 12 }}>
           <ClinicRequestForm
             onCreated={(saved) => {
-              // insert new request at top and close form
               setClinicRequests((prev) => [saved, ...(prev || [])]);
-              // If backend immediately created a clinic record, show it
               if (saved?.clinic) setClinic(saved.clinic);
               setShowRequestForm(false);
             }}
@@ -441,7 +389,6 @@ export default function ClinicAdminDashboard() {
 
       {clinic ? (
         <>
-          {/* Display all clinic requests */}
           {clinicRequests.length > 0 && (
             <div className="po-section">
               <div className="po-section-head">
@@ -566,6 +513,7 @@ export default function ClinicAdminDashboard() {
           <div className="po-section">
             <div className="po-section-head">
               <h2 className="section-title">My Clinic</h2>
+              <div className="section-sub">Clinic profile and schedules</div>
             </div>
             <div className="po-card">
               <div className="po-card-body">
@@ -589,10 +537,38 @@ export default function ClinicAdminDashboard() {
                     </div>
                   )}
                 </div>
+
+                <div style={{ marginTop: 12 }}>
+                  <h4>Schedules</h4>
+                  {schedulesError && <div className="error">{schedulesError}</div>}
+                  {renderSchedules()}
+
+                  {/* Edit form area */}
+                  <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
+                    <select value={scheduleDraft.weekday} onChange={(e) => updateScheduleDraft("weekday", Number(e.target.value))}>
+                      {[1,2,3,4,5,6,7].map(n => <option key={n} value={n}>{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][n-1]}</option>)}
+                    </select>
+                    <input type="time" value={scheduleDraft.openTime} onChange={(e) => updateScheduleDraft("openTime", e.target.value)} />
+                    <input type="time" value={scheduleDraft.closeTime} onChange={(e) => updateScheduleDraft("closeTime", e.target.value)} />
+                    {editingScheduleIndex === null ? (
+                      <button className="btn" onClick={addScheduleRow}>Add row</button>
+                    ) : (
+                      <>
+                        <button className="btn" onClick={() => updateScheduleRow(editingScheduleIndex)}>Update row</button>
+                        <button className="btn-ghost" onClick={cancelEditSchedule}>Cancel</button>
+                      </>
+                    )}
+                    <div style={{ marginLeft: "auto" }}>
+                      <button className="btn" onClick={saveSchedules} disabled={savingSchedules}>{savingSchedules ? "Saving…" : "Save schedules"}</button>
+                    </div>
+                  </div>
+
+                </div>
               </div>
             </div>
           </div>
 
+          {/* Staff, appointments, other sections remain unchanged */}
           <div className="po-section">
             <div className="po-section-head">
               <h2 className="section-title">Staff Members</h2>
@@ -759,7 +735,7 @@ export default function ClinicAdminDashboard() {
                         )}
                         {decidedAt && (
                           <div>
-                            <strong>Decided:</strong>{" "}
+                            <strong>Decided:</strong> {" "}
                             {new Date(decidedAt).toLocaleString()}
                             {req.decidedBy && ` by ${req.decidedBy}`}
                           </div>
@@ -782,8 +758,9 @@ export default function ClinicAdminDashboard() {
                             fontSize: "14px",
                           }}
                         >
-                          Your clinic request is pending approval by a platform
-                          admin. You'll be notified once a decision is made.
+                          Your clinic request is pending approval by a
+                          platform admin. You'll be notified once a decision
+                          is made.
                         </p>
                       )}
                       {req.status === "APPROVED" && (
@@ -806,8 +783,8 @@ export default function ClinicAdminDashboard() {
                             fontSize: "14px",
                           }}
                         >
-                          Your clinic request has been rejected. Please contact
-                          support for more information.
+                          Your clinic request has been rejected. Please
+                          contact support for more information.
                         </p>
                       )}
                     </div>
@@ -842,47 +819,7 @@ export default function ClinicAdminDashboard() {
               <div className="section-sub">
                 Your clinic registration requests
               </div>
-              
             </div>
-
-            {/* Debug info - remove in production */}
-            {/* {process.env.NODE_ENV === "development" && (
-              <div
-                style={{
-                  padding: "12px",
-                  background: "#f0f0f0",
-                  borderRadius: "8px",
-                  marginBottom: "16px",
-                  fontSize: "12px",
-                  fontFamily: "monospace",
-                }}
-              >
-                <strong>Debug Info:</strong>
-                <br />
-                clinicRequests.length = {clinicRequests.length}
-                <br />
-                User ID: {user?.id}
-                <br />
-                User email: {user?.email}
-                <br />
-                User username: {user?.username || "NOT SET"}
-                <br />
-                Loading: {loading ? "true" : "false"}
-                <br />
-                Error: {error || "none"}
-                <br />
-                <strong>Requests Array:</strong>
-                <pre
-                  style={{
-                    fontSize: "10px",
-                    overflow: "auto",
-                    maxHeight: "200px",
-                  }}
-                >
-                  {JSON.stringify(clinicRequests, null, 2)}
-                </pre>
-              </div>
-            )} */}
 
             {clinicRequests.length > 0 ? (
               <div className="po-grid">
@@ -941,43 +878,6 @@ export default function ClinicAdminDashboard() {
                             <strong>Request ID:</strong> #{req.id}
                           </div>
                         </div>
-                        {req.status === "PENDING" && (
-                          <p
-                            style={{
-                              marginTop: 12,
-                              color: "#666",
-                              fontSize: "14px",
-                            }}
-                          >
-                            Your clinic request is pending approval by a
-                            platform admin. You'll be notified once a decision
-                            is made.
-                          </p>
-                        )}
-                        {req.status === "APPROVED" && (
-                          <p
-                            style={{
-                              marginTop: 12,
-                              color: "#28a745",
-                              fontSize: "14px",
-                            }}
-                          >
-                            ✓ Your clinic request has been approved! Your clinic
-                            should now be visible in the system.
-                          </p>
-                        )}
-                        {req.status === "REJECTED" && (
-                          <p
-                            style={{
-                              marginTop: 12,
-                              color: "#dc3545",
-                              fontSize: "14px",
-                            }}
-                          >
-                            Your clinic request has been rejected. Please
-                            contact support for more information.
-                          </p>
-                        )}
                       </div>
                     </div>
                   );
@@ -1009,12 +909,25 @@ function ClinicRequestForm({ onCreated, onCancel }) {
   const [adminEmail, setAdminEmail] = React.useState("");
   const [saving, setSaving] = React.useState(false);
 
+  // schedules for registration request
+  const [schedules, setSchedules] = React.useState([]);
+  const [scheduleDraft, setScheduleDraft] = React.useState({ weekday: 1, openTime: "09:00", closeTime: "17:00" });
+
   React.useEffect(() => {
     if (user) {
       setAdminEmail(user.email || user.username || "");
       setAdminName(user.name || user.username || "");
     }
   }, [user]);
+
+  function addSchedule() {
+    setSchedules(s => [...s, { weekday: Number(scheduleDraft.weekday), openTime: scheduleDraft.openTime, closeTime: scheduleDraft.closeTime }]);
+    setScheduleDraft({ weekday: 1, openTime: "09:00", closeTime: "17:00" });
+  }
+
+  function removeSchedule(i) {
+    setSchedules(s => s.filter((_, idx) => idx !== i));
+  }
 
   const submit = async () => {
     if (!clinicName) { alert("Clinic name required"); return; }
@@ -1027,6 +940,7 @@ function ClinicRequestForm({ onCreated, onCancel }) {
         phone,
         adminName,
         adminEmail: adminEmail || (user?.email || user?.username),
+        schedules, // include schedules with the request
       };
 
       const res = await postClinicRequest(payload);
@@ -1039,6 +953,7 @@ function ClinicRequestForm({ onCreated, onCancel }) {
       setPhone("");
       setAdminName(user?.name || "");
       setAdminEmail(user?.email || user?.username || "");
+      setSchedules([]);
       alert(`Clinic request submitted (id: ${saved?.id || "?"})`);
     } catch (err) {
       console.error("Failed to create clinic request:", err);
@@ -1096,6 +1011,27 @@ function ClinicRequestForm({ onCreated, onCancel }) {
           value={adminEmail}
           onChange={(e) => setAdminEmail(e.target.value)}
         />
+
+        <div style={{ marginTop: 12 }}>
+          <h4>Schedules (optional)</h4>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+            <select value={scheduleDraft.weekday} onChange={(e) => setScheduleDraft(d => ({ ...d, weekday: Number(e.target.value) }))}>
+              {[1,2,3,4,5,6,7].map(n => <option key={n} value={n}>{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][n-1]}</option>)}
+            </select>
+            <input type="time" value={scheduleDraft.openTime} onChange={(e) => setScheduleDraft(d => ({ ...d, openTime: e.target.value }))} />
+            <input type="time" value={scheduleDraft.closeTime} onChange={(e) => setScheduleDraft(d => ({ ...d, closeTime: e.target.value }))} />
+            <button type="button" onClick={addSchedule} className="btn">Add</button>
+          </div>
+
+          <ul>
+            {schedules.map((s, i) => (
+              <li key={i} style={{ marginBottom: 6 }}>
+                {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][(s.weekday||1)-1]} {s.openTime} - {s.closeTime}
+                <button type="button" className="po-btn-outline" style={{ marginLeft: 8 }} onClick={() => removeSchedule(i)}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <div style={{ marginTop: 12 }}>
           <button className="primary" onClick={submit} disabled={saving}>
