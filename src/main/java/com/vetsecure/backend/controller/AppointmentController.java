@@ -56,6 +56,7 @@ public class AppointmentController {
 
     // Create appointment (Pet owner only). Payload: { petId, clinicId, vetId?, date: "yyyy-MM-dd", time: "HH:mm", reason }
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> createAppointment(@RequestBody Map<String, Object> payload, Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
@@ -137,6 +138,7 @@ public class AppointmentController {
      * Get appointment by ID (safe: return minimal fields to avoid lazy-loading / serialization issues)
      */
     @GetMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("@authz.canAccessAppointment(authentication, #id)")
     public ResponseEntity<?> getAppointmentById(@PathVariable Long id) {
         try {
             Optional<Appointment> opt = appointmentRepository.findById(id);
@@ -232,6 +234,7 @@ public class AppointmentController {
      * Get all appointments for a vet
      */
     @GetMapping("/vet/{vetId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('VET', 'CLINIC_ADMIN', 'SUPER_ADMIN', 'ASSISTANT')")
     public List<AppointmentDto> getAppointmentsForVet(@PathVariable Long vetId) {
         // use repository method (defined with fetch-joins) to avoid lazy-init / serialization issues
         List<Appointment> list = appointmentRepository.findByVetId(vetId);
@@ -272,6 +275,7 @@ public class AppointmentController {
      * Get all appointments for a pet
      */
     @GetMapping("/pet/{petId}")
+    @org.springframework.security.access.prepost.PreAuthorize("@authz.canAccessPet(authentication, #petId)")
     public ResponseEntity<List<Appointment>> getAppointmentsByPetId(@PathVariable Long petId) {
         List<Appointment> appointments = appointmentRepository.findAll()
                 .stream()
@@ -284,6 +288,7 @@ public class AppointmentController {
      * Get all appointments for a pet owner (uses repository to avoid lazy init / streaming errors)
      */
     @GetMapping("/owner/{ownerId}")
+    @org.springframework.security.access.prepost.PreAuthorize("@authz.isSelfOwner(authentication, #ownerId) or hasAnyRole('VET', 'CLINIC_ADMIN', 'SUPER_ADMIN', 'ASSISTANT')")
     public ResponseEntity<List<Appointment>> getAppointmentsByOwnerId(@PathVariable Long ownerId) {
         List<Appointment> appointments = appointmentRepository.findByPetOwnerId(ownerId);
         return ResponseEntity.ok(appointments);
@@ -293,6 +298,7 @@ public class AppointmentController {
      * Get all appointments for a clinic
      */
     @GetMapping("/clinic/{clinicId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('VET', 'CLINIC_ADMIN', 'SUPER_ADMIN', 'ASSISTANT')")
     public ResponseEntity<List<Appointment>> getAppointmentsByClinicId(@PathVariable Long clinicId) {
         List<Appointment> appointments = appointmentRepository.findAll()
                 .stream()
@@ -316,6 +322,7 @@ public class AppointmentController {
      * Get appointments by vet and date
      */
     @GetMapping("/vet/{vetId}/date/{date}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('VET', 'CLINIC_ADMIN', 'SUPER_ADMIN', 'ASSISTANT')")
     public ResponseEntity<List<Appointment>> getAppointmentsByVetIdAndDate(
             @PathVariable Long vetId,
             @PathVariable String date
@@ -333,6 +340,7 @@ public class AppointmentController {
      * Update appointment status
      */
     @PatchMapping("/{id}/status")
+    @org.springframework.security.access.prepost.PreAuthorize("@authz.canAccessAppointment(authentication, #id)")
     public ResponseEntity<?> updateAppointmentStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> request
@@ -355,6 +363,7 @@ public class AppointmentController {
      * Complete appointment with diagnosis and prescription
      */
     @PatchMapping("/{id}/complete")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('VET', 'CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> completeAppointment(
             @PathVariable Long id,
             @RequestBody CompleteAppointmentRequest request
@@ -373,6 +382,7 @@ public class AppointmentController {
      * Cancel an appointment
      */
     @PatchMapping("/{id}/cancel")
+    @org.springframework.security.access.prepost.PreAuthorize("@authz.canAccessAppointment(authentication, #id)")
     public ResponseEntity<?> cancelAppointment(@PathVariable Long id) {
         Optional<Appointment> opt = appointmentRepository.findById(id);
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Appointment not found"));
@@ -386,6 +396,7 @@ public class AppointmentController {
      * Update appointment
      */
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("@authz.canAccessAppointment(authentication, #id)")
     public ResponseEntity<?> updateAppointment(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request
@@ -451,6 +462,7 @@ public class AppointmentController {
      * Delete an appointment (admin only)
      */
     @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('SUPER_ADMIN', 'CLINIC_ADMIN')")
     public ResponseEntity<?> deleteAppointment(@PathVariable Long id) {
         try {
             if (!appointmentRepository.existsById(id)) {
@@ -468,6 +480,7 @@ public class AppointmentController {
      * Get all appointments (used as a fallback by frontend)
      */
     @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('VET', 'CLINIC_ADMIN', 'SUPER_ADMIN', 'ASSISTANT')")
     public ResponseEntity<List<Appointment>> getAllAppointments() {
         List<Appointment> all = appointmentRepository.findAllWithFetch();
         return ResponseEntity.ok(all);

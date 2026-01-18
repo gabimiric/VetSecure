@@ -3,6 +3,7 @@ package com.vetsecure.backend.controller;
 import com.vetsecure.backend.model.Clinic;
 import com.vetsecure.backend.repository.ClinicRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,22 +19,26 @@ public class ClinicController {
     private ClinicRepository clinicRepository;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public List<Clinic> getAllClinics() {
         return clinicRepository.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public Optional<Clinic> getClinic(@PathVariable Long id) {
         return clinicRepository.findById(id);
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public Clinic createClinic(@Valid @RequestBody Clinic clinic) {
         clinic.setStatus(Clinic.Status.PENDING);
         return clinicRepository.save(clinic);
     }
 
     @PutMapping("/{id}/approve")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public Clinic approveClinic(@PathVariable Long id) {
         Clinic clinic = clinicRepository.findById(id).orElseThrow();
         clinic.setStatus(Clinic.Status.APPROVED);
@@ -41,6 +46,7 @@ public class ClinicController {
     }
 
     @PutMapping("/{id}/reject")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public Clinic rejectClinic(@PathVariable Long id) {
         Clinic clinic = clinicRepository.findById(id).orElseThrow();
         clinic.setStatus(Clinic.Status.REJECTED);
@@ -48,6 +54,7 @@ public class ClinicController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public void deleteClinic(@PathVariable Long id) {
         clinicRepository.deleteById(id);
     }
@@ -56,7 +63,7 @@ public class ClinicController {
      * Update clinic description
      */
     @PatchMapping("/{id}/description")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('SCOPE_CLINIC_ADMIN', 'SCOPE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public Clinic updateDescription(
             @PathVariable Long id,
             @RequestBody UpdateDescriptionRequest request
@@ -72,7 +79,7 @@ public class ClinicController {
      * Frontend uploads image to Cloudinary first, then sends URL to this endpoint
      */
     @PatchMapping("/{id}/logo")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('SCOPE_CLINIC_ADMIN', 'SCOPE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public Clinic updateLogo(
             @PathVariable Long id,
             @RequestBody UpdateLogoRequest request
@@ -88,7 +95,7 @@ public class ClinicController {
      * Frontend uploads image to Cloudinary first, then sends URL to this endpoint
      */
     @PatchMapping("/{id}/image")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('SCOPE_CLINIC_ADMIN', 'SCOPE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public Clinic updateClinicImage(
             @PathVariable Long id,
             @RequestBody UpdateClinicImageRequest request

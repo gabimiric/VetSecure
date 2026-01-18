@@ -7,6 +7,7 @@ import com.vetsecure.backend.web.dto.ClinicRequestDTO;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,6 +22,27 @@ public class ClinicRequestController {
     public ClinicRequestController(ClinicRequestRepository repo, UserRepository userRepository) {
         this.repo = repo;
         this.userRepository = userRepository;
+    }
+
+    /**
+     * POST /api/clinic-requests
+     * Create a new clinic request (public endpoint - anyone can apply)
+     */
+    @PostMapping
+    public ResponseEntity<?> createClinicRequest(@Valid @RequestBody ClinicRequest request, Authentication auth) {
+        // Default status to PENDING
+        if (request.getStatus() == null) {
+            request.setStatus(ClinicRequest.Status.PENDING);
+        }
+
+        // If authenticated, use auth email as fallback
+        if (auth != null && auth.isAuthenticated() &&
+            (request.getAdminEmail() == null || request.getAdminEmail().isBlank())) {
+            request.setAdminEmail(auth.getName());
+        }
+
+        ClinicRequest saved = repo.save(request);
+        return ResponseEntity.ok(ClinicRequestDTO.fromEntity(saved));
     }
 
     /**

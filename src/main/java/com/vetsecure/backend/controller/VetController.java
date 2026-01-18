@@ -8,6 +8,7 @@ import com.vetsecure.backend.repository.UserRepository;
 import com.vetsecure.backend.repository.VetRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -28,17 +29,20 @@ public class VetController {
     private VetRepository vetRepository;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public List<Vet> getAllVets() {
         return vetRepository.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public Optional<Vet> getVet(@PathVariable Long id) {
         return vetRepository.findById(id);
     }
 
     @PostMapping
     @Transactional
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'CLINIC_ADMIN')")
     public Vet createVet(@Valid @RequestBody Vet vet) {
         // Load and attach existing User
         User existingUser = userRepository.findById(vet.getUser().getId())
@@ -58,6 +62,7 @@ public class VetController {
 
     @PutMapping("/{id}")
     @Transactional
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'CLINIC_ADMIN')")
     public Vet updateVet(@PathVariable Long id, @Valid @RequestBody Vet vetDetails) {
         Vet vet = vetRepository.findById(id).orElseThrow();
 
@@ -76,6 +81,7 @@ public class VetController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'CLINIC_ADMIN')")
     public void deleteVet(@PathVariable Long id) {
         vetRepository.deleteById(id);
     }

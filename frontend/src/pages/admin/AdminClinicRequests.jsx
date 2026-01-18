@@ -1,7 +1,7 @@
 // src/pages/admin/AdminClinicRequests.jsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
-import { listClinics, approveClinic, rejectClinic } from "../../api/admin";
+import { listClinicRequests, approveClinicRequest, rejectClinicRequest } from "../../api/admin";
 import { Link } from "react-router-dom";
 import "../../styles/admin-requests.css";
 
@@ -16,7 +16,7 @@ export default function AdminClinicRequests() {
     setLoading(true);
     setErr("");
     try {
-      const data = await listClinics(s);
+      const data = await listClinicRequests(s);
       setRows(Array.isArray(data) ? data : []);
     } catch (e) {
       setErr(e.message || "Failed to load");
@@ -32,7 +32,7 @@ export default function AdminClinicRequests() {
   async function onApprove(id) {
     if (!window.confirm("Approve this clinic request?")) return;
     try {
-      await approveClinic(id);
+      await approveClinicRequest(id);
       await load();
     } catch (e) {
       alert(e.message || "Failed to approve");
@@ -42,7 +42,7 @@ export default function AdminClinicRequests() {
   async function onReject(id) {
     if (!window.confirm("Reject this clinic request? This action cannot be undone.")) return;
     try {
-      await rejectClinic(id);
+      await rejectClinicRequest(id);
       await load();
     } catch (e) {
       alert(e.message || "Failed to reject");

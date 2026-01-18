@@ -25,7 +25,7 @@ public class VetScheduleController {
      * Create a new vet schedule
      */
     @PostMapping
-    @PreAuthorize("permitAll()")
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> createSchedule(@Valid @RequestBody ScheduleRequest request) {
         try {
             VetSchedule schedule = vetScheduleService.createSchedule(
@@ -82,7 +82,7 @@ public class VetScheduleController {
      * Get all schedules for vets in a clinic
      */
     @GetMapping("/clinic/{clinicId}")
-    @PreAuthorize("hasAnyAuthority('SCOPE_CLINIC_ADMIN', 'SCOPE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<VetSchedule>> getSchedulesByClinicId(@PathVariable Long clinicId) {
         List<VetSchedule> schedules = vetScheduleService.getSchedulesByClinicId(clinicId);
         return ResponseEntity.ok(schedules);
@@ -92,7 +92,7 @@ public class VetScheduleController {
      * Update a vet schedule
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('SCOPE_CLINIC_ADMIN', 'SCOPE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> updateSchedule(
             @PathVariable Long id,
             @Valid @RequestBody UpdateScheduleRequest request
@@ -115,7 +115,7 @@ public class VetScheduleController {
      * Delete a vet schedule
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('SCOPE_CLINIC_ADMIN', 'SCOPE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> deleteSchedule(@PathVariable Long id) {
         try {
             vetScheduleService.deleteSchedule(id);

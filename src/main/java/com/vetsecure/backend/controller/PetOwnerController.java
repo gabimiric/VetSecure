@@ -7,6 +7,7 @@ import com.vetsecure.backend.repository.PetOwnerRepository;
 import com.vetsecure.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -26,17 +27,20 @@ public class PetOwnerController {
     private PetOwnerRepository petOwnerRepository;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'CLINIC_ADMIN', 'VET', 'ASSISTANT')")
     public List<PetOwner> getAllPetOwners() {
         return petOwnerRepository.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@authz.isSelfOwner(authentication, #id) or hasAnyRole('SUPER_ADMIN', 'CLINIC_ADMIN', 'VET', 'ASSISTANT')")
     public Optional<PetOwner> getPetOwner(@PathVariable Long id) {
         return petOwnerRepository.findById(id);
     }
 
     @PostMapping
     @Transactional
+    @PreAuthorize("@authz.canCreateOwnerForSelf(authentication) or hasRole('SUPER_ADMIN')")
     public PetOwner createPetOwner(@Valid @RequestBody PetOwner po) {
         // 1. Load the existing user from DB
         User existingUser = userRepository.findById(po.getUser().getId())
@@ -50,6 +54,7 @@ public class PetOwnerController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@authz.isSelfOwner(authentication, #id) or hasRole('SUPER_ADMIN')")
     public PetOwner updatePetOwner(@PathVariable Long id, @Valid @RequestBody PetOwner ownerDetails) {
         PetOwner owner = petOwnerRepository.findById(id).orElseThrow();
         owner.setFirstName(ownerDetails.getFirstName());
@@ -60,6 +65,7 @@ public class PetOwnerController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public void deletePetOwner(@PathVariable Long id) {
         petOwnerRepository.deleteById(id);
     }

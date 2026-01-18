@@ -6,6 +6,7 @@ import com.vetsecure.backend.repository.ClinicRepository;
 import com.vetsecure.backend.repository.ClinicRequestRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.constraints.Min;
 
@@ -13,8 +14,8 @@ import java.time.Instant;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin-legacy")  // <-- moved off /api/admin to avoid conflicts
-@CrossOrigin // dev convenience; later tighten with proper auth/CORS
+@RequestMapping("/api/admin-legacy")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'CLINIC_ADMIN')")
 public class AdminController {
 
     private final ClinicRequestRepository requestRepo;
@@ -34,6 +35,7 @@ public class AdminController {
     // Approve: mark request + create a clinic row
     @PostMapping("/clinic-requests/{id}/approve")
     @Transactional
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> approve(@PathVariable @Min(1) Long id, @RequestParam(required = false) String decidedBy) {
         ClinicRequest req = requestRepo.findById(id).orElse(null);
         if (req == null) return ResponseEntity.notFound().build();
@@ -63,6 +65,7 @@ public class AdminController {
 
     // Reject
     @PostMapping("/clinic-requests/{id}/reject")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> reject(@PathVariable Long id, @RequestParam(required = false) String decidedBy) {
         ClinicRequest req = requestRepo.findById(id).orElse(null);
         if (req == null) return ResponseEntity.notFound().build();

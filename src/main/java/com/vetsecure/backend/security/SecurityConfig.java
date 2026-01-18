@@ -7,7 +7,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -101,7 +100,7 @@ public class SecurityConfig {
                         // —— Authenticated endpoints (require valid JWT) ——
                         .requestMatchers(
                                 "/api/clinic-requests/me",
-                                "/pets/**",                     // PetController - Pet management
+                                "/pets/**", "/api/pets/**",  // PetController - Pet management
                                 "/appointments/**",             // AppointmentController - Appointment booking/management
                                 "/vet-schedules/**",            // VetScheduleController - Vet schedules
                                 "/clinic-schedules/**",         // ClinicScheduleController - Clinic schedules
@@ -115,26 +114,25 @@ public class SecurityConfig {
                         // —— Everything else requires auth ——
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                    .defaultAuthenticationEntryPointFor(
+                        new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                        request -> request.getRequestURI().startsWith("/api/")
+                    )
+                )
                 .authenticationProvider(daoAuthProvider())
                 .addFilterBefore(securityHeadersFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
-        // Ensure API endpoints return 401 for XHR/API requests instead of redirect to OAuth login
-        http.exceptionHandling()
-            .defaultAuthenticationEntryPointFor(
-                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
-                new AntPathRequestMatcher("/api/**")
-            );
 
         return http.build();
     }
 
     @Bean
     AuthenticationProvider daoAuthProvider() {
-        var dao = new DaoAuthenticationProvider();
-        dao.setUserDetailsService(uds);
-        dao.setPasswordEncoder(passwordEncoder());
-        return dao;
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(uds);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
     }
 
     @Bean

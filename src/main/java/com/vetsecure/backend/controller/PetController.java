@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/pets")
+@RequestMapping({"/pets", "/api/pets"})
 public class PetController {
 
     @Autowired
@@ -28,13 +28,13 @@ public class PetController {
     private PetOwnerRepository ownerRepository;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('SCOPE_pets:read')")
+    @PreAuthorize("hasAnyRole('VET', 'CLINIC_ADMIN', 'SUPER_ADMIN', 'ASSISTANT')")
     public List<Pet> getAllPets() {
         return petRepository.findAll();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_pets:read')")
+    @PreAuthorize("@authz.canAccessPet(authentication, #id)")
     public ResponseEntity<?> getPet(@PathVariable Long id) {
         Optional<Pet> pet = petRepository.findById(id);
         if (pet.isEmpty()) return ResponseEntity.notFound().build();
@@ -110,7 +110,7 @@ public class PetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_pets:write')")
+    @PreAuthorize("@authz.canAccessPet(authentication, #id)")
     public Pet updatePet(@PathVariable Long id, @Valid @RequestBody Pet petDetails) {
         Pet pet = petRepository.findById(id).orElseThrow();
         pet.setName(petDetails.getName());
@@ -124,14 +124,14 @@ public class PetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_pets:write')")
+    @PreAuthorize("@authz.canAccessPet(authentication, #id) or hasRole('SUPER_ADMIN')")
     public void deletePet(@PathVariable Long id) {
         petRepository.deleteById(id);
     }
 
     /** GET /pets/owner/{ownerId} - Get pets by owner ID */
     @GetMapping("/owner/{ownerId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@authz.isSelfOwner(authentication, #ownerId) or hasAnyRole('VET', 'CLINIC_ADMIN', 'SUPER_ADMIN', 'ASSISTANT')")
     public List<Pet> getPetsByOwner(@PathVariable Long ownerId, Authentication auth) {
         // Allow if user is the owner or has pets:read scope
         return petRepository.findByOwnerId(ownerId);

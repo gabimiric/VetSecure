@@ -35,6 +35,7 @@ public class ClinicScheduleController {
      * Create a new clinic schedule
      */
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> createSchedule(@RequestBody ScheduleRequest request) {
         try {
             ClinicSchedule schedule = clinicScheduleService.createSchedule(
@@ -88,6 +89,7 @@ public class ClinicScheduleController {
      * Update a clinic schedule
      */
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> updateSchedule(
             @PathVariable Long id,
             @RequestBody UpdateScheduleRequest request
@@ -110,6 +112,7 @@ public class ClinicScheduleController {
      * Delete a clinic schedule
      */
     @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('CLINIC_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> deleteSchedule(@PathVariable Long id) {
         try {
             clinicScheduleService.deleteSchedule(id);
