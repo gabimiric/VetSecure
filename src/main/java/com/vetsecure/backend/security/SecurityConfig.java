@@ -111,8 +111,9 @@ public class SecurityConfig {
                                 "/pet-owners/me/**"             // PetOwnerController - Pet owner self-management
                         ).authenticated()
 
+                                .requestMatchers("/api/**").authenticated()
                         // —— Everything else requires auth ——
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex
                     .defaultAuthenticationEntryPointFor(
