@@ -1,5 +1,5 @@
 /* src/pages/auth/RegisterPage.jsx */
-import React, { useState, useEffect } from "react";
+  import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthService } from "../../services/AuthService";
 import { useAuth } from "../../auth/AuthProvider"; // added import

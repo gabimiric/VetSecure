@@ -72,6 +72,8 @@ public class SecurityConfig {
                         .failureHandler(oAuth2FailureHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // OAuth2 endpoints must be public so Spring Security can start/finish the redirect flow
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         // Root path - return 404 but with security headers
@@ -147,15 +149,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var cfg = new CorsConfiguration();
-        // Allow common dev frontend origins (CRA uses localhost:3000 by default)
+
         cfg.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
                 "http://localhost:8080",
                 "https://vetsecure.up.railway.app"
         ));
+
         cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
-        cfg.setAllowedHeaders(List.of("Authorization","Content-Type","X-Requested-With"));
+        cfg.setAllowedHeaders(List.of("*")); // ✅ o singură dată
+        cfg.setExposedHeaders(List.of("Authorization"));
         cfg.setAllowCredentials(true);
 
         var source = new UrlBasedCorsConfigurationSource();
