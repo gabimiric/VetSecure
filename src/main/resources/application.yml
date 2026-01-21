@@ -35,7 +35,14 @@ spring:
 #        http-only: true
 #        same-site: strict
 
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+
+
 # OAuth2 redirect URI (when 'google' profile is active)
+
+
 app:
   oauth2:
     redirect-uri: ${APP_OAUTH2_REDIRECT_URI:http://localhost:8080/login}
