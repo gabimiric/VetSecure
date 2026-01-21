@@ -1,6 +1,13 @@
 /* src/services/AuthService.js */
 
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8082";
+const API_BASE =
+    process.env.REACT_APP_API_BASE ||
+    (process.env.NODE_ENV === "development" ? "http://localhost:8082" : "");
+
+if (!API_BASE) {
+  throw new Error("Missing REACT_APP_API_BASE");
+}
+
 
 function withBase(path) {
   if (path.startsWith("http")) return path;
@@ -9,7 +16,7 @@ function withBase(path) {
 
 export const AuthService = {
   async getExistingRoles() {
-    const endpoints = ["/roles", "/api/roles"];
+    const endpoints = ["/api/roles"];
 
     for (const path of endpoints) {
       try {
@@ -36,7 +43,7 @@ export const AuthService = {
 
     // If all endpoints failed, throw a helpful error
     throw new Error(
-      "Failed to fetch roles. Please ensure the backend server is running on http://localhost:8082"
+        "Failed to fetch roles. Backend unreachable or CORS blocked."
     );
   },
 
