@@ -2,7 +2,11 @@
 
 import axios from "axios";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8082";
+const API_BASE =
+    process.env.REACT_APP_API_BASE ||
+    (process.env.NODE_ENV === "development" ? "http://localhost:8082" : "");
+if (!API_BASE) throw new Error("Missing REACT_APP_API_BASE");
+
 
 // --- Public: submit a clinic request ---
 export async function postClinicRequest(payload) {
